@@ -376,12 +376,15 @@ uv run --with "honet==0.2.0" python -c "import honet; print(honet.__version__)"
 
 ### 10.1 一次性配置 PyPI 侧（必须手动做一次）
 
-1. 登录 PyPI → *Account settings → Publishing* → *Add a new pending publisher*；
-2. 填写：PyPI Project Name `honet`、Owner `doctordragon666`、Repository name `honet`、
-   Workflow name `publish-pypi.yml`、Environment name `pypi`；
-3. 保存。工作流第一次成功上传后，该 publisher 自动转正。
+`honet` 0.1.0 已发布，项目已存在，因此：
 
-`environment: pypi` 必须与第 2 步的 Environment name 完全一致，否则 OIDC 校验失败
+1. 登录 PyPI → 项目页 <https://pypi.org/project/honet/> → *Manage → Publishing*；
+2. 点 *Add a trusted publisher*（GitHub），填写：
+   Owner `doctordragon666`、Repository name `honet`、
+   Workflow name `publish-pypi.yml`、Environment name `pypi`；
+3. 保存。之后该环境下的工作流即可用 OIDC 上传，无需 token。
+
+注意 `environment: pypi` 必须与这里填写的 Environment name 完全一致，否则 OIDC 校验失败
 （报 `invalid-publisher` 或 403）。
 
 ### 10.2 为什么“定时”而不是“每次提交”
@@ -405,7 +408,7 @@ uv run --with "honet==0.2.0" python -c "import honet; print(honet.__version__)"
 | `No such file or directory: dist/*` | 还没构建，或构建到了别的目录 | 先 `uv build`，确认 `dist/` 内有 `*.whl` 与 `*.tar.gz` |
 | `Invalid or non-existent authentication information` 提示输入用户名 | 环境变量未生效（新终端、子进程） | 同一终端内 export/`$env:` 后再执行；或写入 `~/.pypirc` 的 `username` |
 | 把 dev/rc 发到了正式 PyPI | 通道混用，且 twine 不校验版本形态 | 立即 **yank**；复核第 5 节清单，dev/rc 只能 `--repository testpypi` |
-| 名称被占用（注册提示不可用） | PyPI 名称全局唯一，`-`/`_`/大小写归一化后等价 | 只能换名（`honet-py`、`honetx`、`pyhonet` 等）。**本项目已核实 `honet` 返回 404（可用）** |
+| 名称被占用（注册提示不可用） | PyPI 名称全局唯一，`-`/`_`/大小写归一化后等价 | 只能换名（`honet-py`、`honetx`、`pyhonet` 等）。`honet` 已由本项目发布（0.1.0） |
 | README 在 PyPI 页面渲染错乱/空白 | PyPI 只支持有限 Markdown 子集 | 改用绝对图片 URL、简化表格；先发 TestPyPI 预览 |
 | `license` 相关上传错误 | 同时使用 PEP 639 `license = "MIT"` 表达式与 `License :: OSI Approved :: MIT License` 分类器 | 二者互斥；本项目只保留表达式 + `license-files` |
 | `uv build` 报 `glob ... did not match any files` | `license-files` / `source-include` 指向的文件不存在 | 确认 `LICENSE`、`CHANGELOG.md` 与 `pyproject.toml` 同级 |
