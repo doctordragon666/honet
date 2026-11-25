@@ -1,6 +1,6 @@
 [project]
 name = "honet"
-version = "0.2.0"
+version = "0.1.1"
 description = "Lightweight toolkit for modelling and analysing higher-order networks (hypergraphs)."
 readme = "README.md"
 license = "GPL-3.0-or-later"

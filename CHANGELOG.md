@@ -42,7 +42,7 @@
 
 ## [stable] — `X.Y.Z`（正式 PyPI）
 
-### [0.2.0] - 2026-11-25
+### [0.1.1] - 2026-11-25
 
 #### Added
 
@@ -80,7 +80,7 @@
   保证在 PyPI 页面也能正确跳转。
 - 开源协议由 MIT 变更为 **GPL-3.0-or-later**：`LICENSE` 替换为 GPLv3 全文，
   `pyproject.toml` 的 `license` 字段与 README 徽章、许可证节同步更新。
-  0.1.0 为 MIT，自 0.2.0 起为 GPL-3.0-or-later。
+  0.1.0 为 MIT，自 0.1.1 起为 GPL-3.0-or-later。
 
 ### [0.1.0] - 2026-11-24
 
