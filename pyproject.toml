@@ -1,0 +1,79 @@
+[project]
+name = "honet"
+version = "0.1.0"
+description = "Lightweight toolkit for modelling and analysing higher-order networks (hypergraphs)."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [
+    { name = "DoctorDragon", email = "river_stream@petalmail.com" },
+]
+maintainers = [
+    { name = "DoctorDragon", email = "river_stream@petalmail.com" },
+]
+keywords = [
+    "higher-order-networks",
+    "hypergraph",
+    "complex-systems",
+    "network-science",
+    "incidence-matrix",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/doctordragon666/honet"
+Repository = "https://github.com/doctordragon666/honet"
+Documentation = "https://github.com/doctordragon666/honet/blob/main/README.md"
+Changelog = "https://github.com/doctordragon666/honet/blob/main/CHANGELOG.md"
+Issues = "https://github.com/doctordragon666/honet/issues"
+
+[dependency-groups]
+# 开发期依赖：只用于测试与静态检查，不会进入发布到 PyPI 的运行依赖
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["uv_build>=0.10.11,<0.11.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+# sdist 额外收录的仓库根文件（默认只收 src 模块 + pyproject.toml + README.md + LICENSE）。
+# CHANGELOG.md 是发布溯源的关键文档，必须随 sdist 分发，便于下游审计变更；
+# wheel 只包含 honet/ 模块（+ py.typed），不重复收录文档。
+source-include = ["CHANGELOG.md"]
+
+[tool.ruff]
+# 目标 Python 版本与 requires-python 保持一致
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+# 不对 Markdown 中的示例代码块做重排：README/PUBLISHING 里的注释是对齐排版，
+# 交给 ruff format 会挤掉空白，反而降低可读性
+extend-exclude = ["*.md", "docs"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle  E/F: pyflakes  I: isort  UP: pyupgrade  B: bugbear
+select = ["E", "F", "I", "UP", "B"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["honet"]
+
+[tool.pytest.ini_options]
+# tests 目录无需手工加入 sys.path：包以可编辑模式安装进虚拟环境
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"

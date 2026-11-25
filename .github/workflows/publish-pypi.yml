@@ -1,0 +1,95 @@
+# 定时发布：每周检查一次，若 pyproject.toml 里的版本（稳定版）在 PyPI 上还不存在，
+# 就跑测试、构建并发布；已存在或属于预发布通道时直接跳过。
+#
+# 认证使用 PyPI Trusted Publishing（OIDC），仓库与 GitHub Secrets 里都不保存 token。
+# 首次启用前需在 PyPI 配置 pending publisher，步骤见 docs/PUBLISHING.md 第 10 节。
+name: Scheduled PyPI Release
+
+on:
+  schedule:
+    # 每周一 03:00 UTC（北京时间 11:00）
+    - cron: "0 3 * * 1"
+  # 允许在 Actions 页面手动触发（例如刚改完版本号，不想等下一次定时）
+  workflow_dispatch:
+
+concurrency:
+  group: pypi-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: 发布 honet 到 PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/honet/
+    permissions:
+      contents: read
+      id-token: write # Trusted Publishing 用 OIDC 换取短期上传凭据
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: 读取版本号
+        id: version
+        run: echo "value=$(uv version --short)" >> "$GITHUB_OUTPUT"
+
+      - name: 判断发布通道
+        id: channel
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          # 预发布版本（dev / a / b / rc）按发布策略只发 TestPyPI，本工作流跳过
+          if [[ "$VERSION" =~ (a|b|rc)[0-9]+ ]] || [[ "$VERSION" =~ \.dev[0-9]+$ ]]; then
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::$VERSION 是预发布版本，按策略只发 TestPyPI，本次跳过。"
+          else
+            echo "stable=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 检查 PyPI 是否已有该版本
+        id: exists
+        if: steps.channel.outputs.stable == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          if curl -fsS "https://pypi.org/pypi/honet/${VERSION}/json" > /dev/null; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::PyPI 上已存在 ${VERSION}，跳过发布。"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 安装开发依赖
+        if: steps.channel.outputs.stable == 'true' && steps.exists.outputs.value == 'false'
+        run: uv sync --group dev
+
+      - name: 运行测试
+        if: steps.channel.outputs.stable == 'true' && steps.exists.outputs.value == 'false'
+        run: uv run pytest -q
+
+      - name: 静态检查
+        if: steps.channel.outputs.stable == 'true' && steps.exists.outputs.value == 'false'
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: 构建并校验分发包
+        if: steps.channel.outputs.stable == 'true' && steps.exists.outputs.value == 'false'
+        run: |
+          uv build
+          uvx twine check dist/*
+
+      - name: 上传到 PyPI
+        if: steps.channel.outputs.stable == 'true' && steps.exists.outputs.value == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

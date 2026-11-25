@@ -1,0 +1,28 @@
+# ~/.pypirc 示例（真实文件放在用户主目录，不要提交到仓库）
+#
+# Windows:   %USERPROFILE%\.pypirc
+# Linux/macOS: ~/.pypirc（建议 chmod 600）
+#
+# 复制本文件为 .pypirc 后，把 pypi-xxxx 换成各自的 API token。
+# 更安全的做法是删掉 password 行，改用环境变量注入：
+#   PowerShell: $env:TWINE_USERNAME="__token__"; $env:TWINE_PASSWORD="pypi-xxxx"
+#   bash:       export TWINE_USERNAME="__token__"; export TWINE_PASSWORD="pypi-xxxx"
+# 使用新的 keyring 时也可只保留 username，让 twine 从系统钥匙串取密码。
+
+[distutils]
+# twine 的 --repository 参数只认这里登记过的名字
+index-servers =
+    pypi
+    testpypi
+
+[pypi]
+# 正式 PyPI（默认仓库，--repository 可省略）
+repository = https://upload.pypi.org/legacy/
+username = __token__
+# password = pypi-正式站token
+
+[testpypi]
+# TestPyPI：独立账号、独立 token，与正式站不通用
+repository = https://test.pypi.org/legacy/
+username = __token__
+# password = pypi-测试站token
