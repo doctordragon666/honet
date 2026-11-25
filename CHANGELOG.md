@@ -30,11 +30,26 @@
 
 ## [Unreleased]
 
-### Added
+（暂无。下一个版本的改动将在此登记。）
 
-- 类层次（`honet.networks`）：抽象基类 `HigherOrderNetwork`，以及四种**数据结构不同**的形态
-  —— `SimplicialComplexNetwork`（极大单形/面向下封闭）、`HypergraphNetwork`（超边）、
-  `MultilayerNetwork`（分层存储）、`TemporalNetwork`（时间戳事件流）。
+## [dev] — `X.Y.Z.devN`（仅 TestPyPI）
+
+（暂无。下一个开发快照将在此登记。）
+
+## [rc] — `X.Y.ZrcN`（仅 TestPyPI）
+
+（暂无。）
+
+## [stable] — `X.Y.Z`（正式 PyPI）
+
+### [0.2.0] - 2026-11-25
+
+#### Added
+
+- 类层次（`honet.base` + 四个形态子包）：抽象基类 `HigherOrderNetwork`，以及四种
+  **数据结构不同**的形态 —— `SimplicialComplexNetwork`（极大单形/面向下封闭）、
+  `HypergraphNetwork`（超边）、`MultilayerNetwork`（分层存储）、`TemporalNetwork`
+  （时间戳事件流）。
 - 每种形态派生 `W` / `D` / `WD` 三个显式变体，共 16 个具体类；
   `WeightedMixin` / `DirectedMixin` 承载 `is_weighted` / `is_directed`、权重默认 1.0、
   有向成员顺序与自环保留校验。
@@ -45,8 +60,9 @@
 - `.github/workflows/publish-pypi.yml`：每周定时检查版本号，稳定版尚未发布时自动跑
   测试、静态检查、`uv build` + `twine check`，并用 PyPI Trusted Publishing 上传；
   预发布版本（dev/rc）与已存在的版本自动跳过。
+- `docs/DEVELOPMENT.md`：面向贡献者的开发指南（环境、目录结构、测试与构建、提交前清单）。
 
-### Changed
+#### Changed
 
 - 发布流程改为「`uv build` 构建 + `uvx twine` 校验/上传」：不再使用 `uv publish`，
   twine 通过 `uvx` 临时执行，不进入项目依赖；新增 `.pypirc.example` 与
@@ -58,16 +74,13 @@
   对外导入路径与 `__all__` 保持不变。
 - 仓库托管地址统一为 `https://github.com/doctordragon666/honet`，`pyproject.toml`
   的 Homepage / Repository / Documentation / Changelog / Issues 同步更新。
-
-## [dev] — `X.Y.Z.devN`（仅 TestPyPI）
-
-（暂无。下一个开发快照将在此登记。）
-
-## [rc] — `X.Y.ZrcN`（仅 TestPyPI）
-
-（暂无。）
-
-## [stable] — `X.Y.Z`（正式 PyPI）
+- 文档按读者分层：`README.md` 只保留用户内容（安装、快速开始、API、类层次、示例），
+  开发环境、目录结构、测试与构建约定移入新增的 `docs/DEVELOPMENT.md`；
+  发布流程仍在 `docs/PUBLISHING.md`。README 中的文档链接改为绝对 URL，
+  保证在 PyPI 页面也能正确跳转。
+- 开源协议由 MIT 变更为 **GPL-3.0-or-later**：`LICENSE` 替换为 GPLv3 全文，
+  `pyproject.toml` 的 `license` 字段与 README 徽章、许可证节同步更新。
+  0.1.0 为 MIT，自 0.2.0 起为 GPL-3.0-or-later。
 
 ### [0.1.0] - 2026-11-24
 

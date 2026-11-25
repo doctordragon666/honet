@@ -2,9 +2,9 @@
 
 [![PyPI](https://img.shields.io/badge/PyPI-honet-blue)](https://pypi.org/project/honet/)
 [![Python](https://img.shields.io/badge/python-3.12%2B-3776AB)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
-面向复杂系统的**高阶网络（higher-order networks）**建模工具包。
+面向复杂系统的**高阶网络**（higher-order networks）建模工具包。
 
 成对网络（pairwise network）只能描述“两个个体之间的连接”，而真实系统里大量交互是
 **多元**的：一篇论文有多位作者、一个反应需要多种反应物、一次会议有多方参与。
@@ -26,12 +26,6 @@
 
 ```bash
 uv add honet
-```
-
-在已有虚拟环境中同步依赖（不修改 `pyproject.toml`）：
-
-```bash
-uv sync
 ```
 
 在临时环境中直接试用，不落盘安装：
@@ -114,30 +108,9 @@ HigherOrderNetwork (ABC，不可实例化)          honet/base/network.py
     └── TemporalNetworkWD
 ```
 
-包内模块按「一个文件只放一个类／一个函数」组织，四种形态各占一个子包，
-每个子包只有一个 `network.py`（内含形态基类与 `W` / `D` / `WD` 三个变体）：
-
-```
-src/honet/
-├── __init__.py                 仅做导出 + __version__
-├── _types.py                   Node / Members 类型别名
-├── base/
-│   ├── network.py              HigherOrderNetwork
-│   └── mixins/
-│       ├── weighted.py         WeightedMixin
-│       └── directed.py         DirectedMixin
-├── core/
-│   ├── hyperedge.py            Hyperedge
-│   └── hypergraph.py           Hypergraph
-├── simplicial/network.py       单纯复形基类 + W/D/WD
-├── hypergraph/network.py       超图基类 + W/D/WD
-├── multilayer/network.py       多层基类 + W/D/WD
-├── temporal/network.py         时序基类 + W/D/WD
-└── utils/
-    ├── incidence_matrix.py
-    ├── degree_sequence.py
-    └── clique_projection.py
-```
+包内实现按「一个文件只放一个类／一个函数」拆分到 `src/honet/` 下的 `base/`、`core/`、
+`simplicial/`、`hypergraph/`、`multilayer/`、`temporal/`、`utils/` 子包。
+目录结构与开发约定见[开发指南](https://github.com/doctordragon666/honet/blob/main/docs/DEVELOPMENT.md)。
 
 加权与有向能力由 `WeightedMixin` / `DirectedMixin` 承载（`is_weighted` / `is_directed`
 标记、权重默认 `1.0` 且必须为正、有向成员保留顺序并拒绝自环与重复结点），
@@ -188,40 +161,22 @@ uv run --with jupyter --with ipykernel jupyter nbconvert \
 | `03_clique_projection.ipynb`      | 团投影，以及“三元边 vs 三条二元边”投影相同但结构不同的信息损失 |
 | `04_collaboration_scenario.ipynb` | 6 人实验室合作网络小场景：高阶度、加权度与投影来源追溯           |
 
-## 开发
+## 文档
 
-依赖与打包元数据只来自 `pyproject.toml`，一切用 uv 完成：
+本页与 `examples/` 面向**使用者**；构建、测试、发布等**开发者文档**集中在 `docs/`，
+不随包分发：
 
-```bash
-# 安装（含 dev 组：pytest、ruff）
-uv sync
-
-# 运行测试
-uv run pytest
-
-# 静态检查
-uv run ruff check .
-
-# 构建分发包（产物写入 dist/）
-uv build
-```
-
-## 发布
-
-构建用 uv，校验与上传用 twine（通过 `uvx` 临时执行，不装进项目依赖）：
-
-```bash
-uv build                                   # 1. 构建 sdist + wheel
-uvx twine check dist/*                     # 2. 校验元数据与 README 渲染，必须全 PASSED
-uvx twine upload --repository testpypi dist/*   # 3a. dev / rc 版本 → TestPyPI
-uvx twine upload dist/*                    # 3b. stable 版本 → PyPI
-```
-
-凭据通过环境变量注入（`TWINE_USERNAME=__token__`、`TWINE_PASSWORD=<API token>`），
-仓库配置见 [`.pypirc.example`](.pypirc.example)。版本三通道
-（`X.Y.Z.devN` / `X.Y.ZrcN` / `X.Y.Z`）与索引的对应关系、分支与标签策略、
-常见失败原因见 [`docs/PUBLISHING.md`](docs/PUBLISHING.md)。
+| 文档 | 面向 | 内容 |
+| --- | --- | --- |
+| 本页 README | 用户 | 安装、快速开始、API 概览、类层次、示例 |
+| [`examples/`](https://github.com/doctordragon666/honet/tree/main/examples) | 用户 | 四个可执行 notebook，覆盖全部公开 API |
+| [`CHANGELOG.md`](https://github.com/doctordragon666/honet/blob/main/CHANGELOG.md) | 用户 / 开发 | 按 dev / rc / stable 通道记录的版本变更 |
+| [`docs/DEVELOPMENT.md`](https://github.com/doctordragon666/honet/blob/main/docs/DEVELOPMENT.md) | 开发 | 环境、目录结构、测试与静态检查、构建、notebook 执行 |
+| [`docs/PUBLISHING.md`](https://github.com/doctordragon666/honet/blob/main/docs/PUBLISHING.md) | 开发 | 版本通道、twine 上传、GitHub Actions 定时发布、故障排查 |
 
 ## 许可证
 
-[MIT](LICENSE)
+[GPL-3.0-or-later](LICENSE)（GNU General Public License v3.0 或任何更新版本）。
+
+Copyright (c) 2026 DoctorDragon。你可以自由使用、修改与再分发本软件；
+分发衍生作品时需同样以 GPL-3.0-or-later 授权，并提供对应源代码。

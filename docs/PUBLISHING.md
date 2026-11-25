@@ -215,7 +215,7 @@ uvx twine check dist/*
 
 - [ ] `CHANGELOG.md` 对应分区（`dev` / `rc` / `stable`）已登记本次内容；
 - [ ] `README.md` 示例输出与实际行为一致；
-- [ ] `LICENSE` 与 `license = "MIT"` + `license-files = ["LICENSE"]` 匹配；
+- [ ] `LICENSE` 与 `license = "GPL-3.0-or-later"` + `license-files = ["LICENSE"]` 匹配；
 - [ ] `classifiers` 中的 Python 版本不超出 `requires-python`；
 - [ ] 上传目标与版本形态一致（这一点 twine 不会帮你把关）；
 - [ ] 工作区干净；若使用 git，`uv.lock` 已纳入版本控制。
@@ -410,7 +410,7 @@ uv run --with "honet==0.2.0" python -c "import honet; print(honet.__version__)"
 | 把 dev/rc 发到了正式 PyPI | 通道混用，且 twine 不校验版本形态 | 立即 **yank**；复核第 5 节清单，dev/rc 只能 `--repository testpypi` |
 | 名称被占用（注册提示不可用） | PyPI 名称全局唯一，`-`/`_`/大小写归一化后等价 | 只能换名（`honet-py`、`honetx`、`pyhonet` 等）。`honet` 已由本项目发布（0.1.0） |
 | README 在 PyPI 页面渲染错乱/空白 | PyPI 只支持有限 Markdown 子集 | 改用绝对图片 URL、简化表格；先发 TestPyPI 预览 |
-| `license` 相关上传错误 | 同时使用 PEP 639 `license = "MIT"` 表达式与 `License :: OSI Approved :: MIT License` 分类器 | 二者互斥；本项目只保留表达式 + `license-files` |
+| `license` 相关上传错误 | 同时使用 PEP 639 `license = "GPL-3.0-or-later"` 表达式与 `License :: OSI Approved :: ...` 分类器 | 二者互斥；本项目只保留表达式 + `license-files` |
 | `uv build` 报 `glob ... did not match any files` | `license-files` / `source-include` 指向的文件不存在 | 确认 `LICENSE`、`CHANGELOG.md` 与 `pyproject.toml` 同级 |
 | 版本号比较“乱序” | 用了 `0.2.0-rc1`、`0.2.0.dev-1` 等非 PEP 440 写法 | 严格用 `0.2.0rc1`、`0.2.0.dev1`；`+local` 后缀不允许上传 |
 | 验证项目安装时报“只支持 >=3.12” | 临时项目继承 `uv init` 默认的 `requires-python = ">=3.11"` | 建临时项目时加 `--python 3.12`（见第 7 节） |
