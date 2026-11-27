@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from honet._deps import require
+from honet._topology import topology
 from honet.convert._weights import edge_weight_sums
 
 
@@ -39,13 +40,14 @@ def convert_hypernetx_to_hypergraphx(hnx_g: Any) -> Any:
     # 1. 超边权重（关联矩阵列和）
     weights = edge_weight_sums(hnx_g)
 
-    # 2. 过滤退化超边并收集成员元组 + 对应权重，两个列表必须严格等长
+    # 2. 过滤退化超边并收集成员元组 + 对应权重，两个列表必须严格等长。
+    #    成员表取自共享拓扑索引，避免逐边访问 H.edges[e]
+    members = topology(hnx_g).members
     edge_list: list[tuple[Any, ...]] = []
     valid_weights: list[float] = []
-    for edge_id in hnx_g.edges:
-        edge_nodes = tuple(hnx_g.edges[edge_id])
+    for edge_id, edge_nodes in members.items():
         if len(edge_nodes) >= 2:
-            edge_list.append(edge_nodes)
+            edge_list.append(tuple(edge_nodes))
             valid_weights.append(float(weights.get(edge_id, 1.0)))
 
     return hgx.Hypergraph(edge_list, weighted=True, weights=valid_weights)

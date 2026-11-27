@@ -8,7 +8,7 @@
 与旧实现的差异（有意为之，已在对应公开函数的 docstring 中注明）：
 
 * 旧实现用 ``H.neighbors(node)`` 取邻居，2.4.3 仍可用但属于待移除接口，
-  这里统一走 ``honet._hnx.node_neighbors``；
+  这里统一走共享拓扑索引 ``honet._topology.topology`` 的邻居表；
 * 旧 ``RandomGillespie_SIS`` 在选结点时用的是**无噪声**速率，与事件总数
   （噪声速率之和）口径不一致，概率和不为 1 时靠二次归一化掩盖；这里改用
   与总数一致的噪声速率；
@@ -21,7 +21,7 @@ from __future__ import annotations
 from typing import Any
 
 from honet._deps import require
-from honet._hnx import node_neighbors
+from honet._topology import topology
 from honet.contagion._common import choose_initial_infecteds
 
 
@@ -37,8 +37,13 @@ def _initial_state(
 
 
 def _degrees(H: Any) -> dict[Any, int]:
-    """返回 ``{结点: 成对邻居数}``（旧实现用邻居个数，不是超边度）。"""
-    return {node: len(node_neighbors(H, node)) for node in H.nodes}
+    """返回 ``{结点: 成对邻居数}``（旧实现用邻居个数，不是超边度）。
+
+    邻居表来自共享拓扑索引，多个模型共用一次构建结果，避免每个结点都
+    重新遍历所属超边。
+    """
+    top = topology(H)
+    return {node: len(top.neighbors_of(node)) for node in top.nodes}
 
 
 def _theta(nodes: list[Any], degrees: dict[Any, int], state: dict[Any, str]) -> float:

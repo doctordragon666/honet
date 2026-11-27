@@ -10,6 +10,7 @@ from itertools import combinations
 from typing import Any
 
 from honet._deps import require
+from honet._topology import topology
 
 
 def convert_hypernetx_to_nxgraph(hnx_hypergraph: Any) -> Any:
@@ -38,10 +39,10 @@ def convert_hypernetx_to_nxgraph(hnx_hypergraph: Any) -> Any:
     if not isinstance(hnx_hypergraph, hnx.Hypergraph):
         raise TypeError("输入必须是 hypernetx.Hypergraph 对象")
 
-    # 1. 每条超边展开成完全图的边集合（成员数 < 2 时 combinations 为空，自动跳过）
+    # 1. 每条超边展开成完全图的边集合（成员数 < 2 时 combinations 为空，自动跳过）。
+    #    成员表取自共享拓扑索引，避免逐边访问 H.edges[e]
     edges: list[tuple[Any, Any]] = []
-    for edge in hnx_hypergraph.edges:
-        nodes = list(hnx_hypergraph.edges[edge])
+    for nodes in topology(hnx_hypergraph).members.values():
         edges.extend(combinations(nodes, 2))
 
     # 2. 交给 NetworkX 建无向图（自动去重）

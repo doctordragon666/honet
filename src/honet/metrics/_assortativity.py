@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 from honet._deps import require
-from honet._hnx import edge_members, node_degrees
+from honet._topology import topology
 
 
 def average_ranks(values: list[float]) -> Any:
@@ -79,23 +79,24 @@ def assortativity_rank_correlation(H: Any) -> float:
     """
     np = require("numpy")
 
-    nodes = list(H.nodes)
+    top = topology(H)
+    nodes = list(top.nodes)
     if len(nodes) < 2:
         return 0.0
 
-    degrees = node_degrees(H)
+    degrees = top.degrees
     # 平均秩：超度相同的结点共享同一秩，避免人为引入顺序偏好
     rank_values = average_ranks([float(degrees.get(node, 0)) for node in nodes])
     ranks = {node: float(rank) for node, rank in zip(nodes, rank_values, strict=True)}
 
     xs: list[float] = []
     ys: list[float] = []
-    for members in edge_members(H).values():
+    for members in top.members.values():
         if len(members) < 2:
             # 单结点超边没有「第二大结点」，跳过
             continue
-        top, second = top_two(members, degrees)
-        xs.append(ranks[top])
+        top_node, second = top_two(list(members), degrees)
+        xs.append(ranks[top_node])
         ys.append(ranks[second])
 
     if len(xs) < 2:

@@ -72,6 +72,20 @@ hypernetx 的访问接口有隐藏成本：
 **全局指标尽量由局部指标导出**，例如全局聚类系数就是局部聚类系数的均值，
 不重复实现一套逻辑。
 
+### 转换函数
+
+`convert_hypernetx_to_{xgi,hypergraphx,nxgraph}` 都改为复用 `Topology.members`，
+不再逐边访问 `H.edges[e]`。实测（300 结点 / 800 超边）：
+
+| 函数 | 耗时 |
+| --- | ---: |
+| `convert_hypernetx_to_nxgraph` | 3.94 ms |
+| `convert_hypernetx_to_hypergraphx` | 15.47 ms |
+| `convert_hypernetx_to_xgi` | 17.02 ms |
+| `get_hyperedge_weights` | 12.66 ms |
+
+复现：`uv run python docs/_bench_convert.py`
+
 ## 5. 实测收益
 
 200 结点 / 500 超边 / 每条 4 成员：

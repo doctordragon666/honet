@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from honet._deps import require
+from honet._topology import topology
 from honet.convert._weights import edge_weight_sums
 
 
@@ -43,10 +44,12 @@ def convert_hypernetx_to_xgi(hnx_g: Any) -> tuple[Any, dict[int, Any]]:
     # 2. 超边权重（关联矩阵列和）；取不到时按 XGI 的默认权重 1.0 处理
     edge_weights = edge_weight_sums(hnx_g)
 
-    # 3. 每条超边转成 (结点下标..., 权重)，权重放在元组末尾
+    # 3. 每条超边转成 (结点下标..., 权重)，权重放在元组末尾。
+    #    成员表取自共享拓扑索引，避免逐边访问 H.edges[e]（每次都会重建列表）
+    members = topology(hnx_g).members
     xgi_edges: list[tuple[int, ...]] = []
-    for edge in hnx_g.edges:
-        edge_indices = [node_to_idx[node] for node in hnx_g.edges[edge]]
+    for edge, edge_nodes in members.items():
+        edge_indices = [node_to_idx[node] for node in edge_nodes]
         edge_indices.append(edge_weights.get(edge, 1.0))
         xgi_edges.append(tuple(edge_indices))
 
