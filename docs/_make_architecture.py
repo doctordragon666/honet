@@ -53,7 +53,7 @@ ADAPTER = [
 ANALYSIS = [
     ("export/", "导出 LaTeX / CSV", "5", "analysis"),
     ("plot/", "绘图", "13", "viz"),
-    ("control/", "控制 · 驱动+动力学+单纯形+稳态+仿真", "43", "hat"),
+    ("control/", "控制 · 驱动+动力学+单纯形+稳态+仿真+统计", "51", "hat"),
     ("attack/", "攻击鲁棒性", "6", "analysis"),
     ("contagion/", "传播动力学 · 规格驱动，可扩 SIS/SIR/SIER", "32", "analysis"),
     ("community/", "社区发现", "15", "analysis"),
@@ -236,7 +236,7 @@ def main() -> None:
     )
     ax.text(
         0.45, 0.18,
-        "验证：731 passed · ruff check / format 全通过 · "
+        "验证：763 passed · ruff check / format 全通过 · "
         "指标缓存命中后提速 55–21000× · 传播模型可注册扩展",
         fontsize=8.5, color="#78909c", ha="left", va="center", family=FONT,
     )

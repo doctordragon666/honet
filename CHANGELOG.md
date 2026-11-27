@@ -53,6 +53,21 @@
 
 ### Added
 
+- **控制框架新增能量积分、归一化与统计检验**（参考 nctpy）
+  - `_energy_integration.py`：`integrate_control_energy`（Simpson 法则积分
+    `∫u²dt`）、`minimum_energy_fast`（Simpson 型 Gramian 数值积分）、
+    `minimum_energy_exact`（精确块指数解）。
+  - `_normalization.py`：`normalize_state`（欧氏范数归一化）、
+    `normalize_weights`（秩变换 + 缩放 + 常数）、`null_p_value`（加一平滑
+    经验 p 值）、`fdr_p_values`（BH 步进法）、`label_to_state`（标签整数编码）。
+  - **与 nctpy 逐位一致**：`normalize_weights` 误差 0.0。注意 nctpy 的
+    `add_constant` 是整体 +1（结果落 `[1,2]`），不是缩放到 `(0,1]`；
+    第一版按后者实现，对照后发现偏离，已修正。
+  - nctpy 的 `integrate_u` 自身在 scipy >= 1.14 上崩溃（同样的 `simps`
+    版本比较 bug），无法数值对照；本实现直接用现存的 `scipy.integrate.simpson`。
+
+### Added
+
 - **控制框架新增前向仿真与批量控制任务**（参考 nctpy）
   - `_simulate_system.py`：`simulate_system` 给定输入正算轨迹（连续时间用
     增广矩阵指数的精确分段推进，离散时间直接迭代）；`simulate_impulse`

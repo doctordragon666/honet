@@ -87,6 +87,16 @@ _EXPORTS = {
     "BatchEnergyResult": "honet.control._batch_control:BatchEnergyResult",
     "expand_states": "honet.control._batch_control:expand_states",
     "control_energy_matrix": "honet.control._batch_control:control_energy_matrix",
+    # ---- 能量积分与快速估算（参考 nctpy）----
+    "integrate_control_energy": "honet.control._energy_integration:integrate_control_energy",
+    "minimum_energy_fast": "honet.control._energy_integration:minimum_energy_fast",
+    "minimum_energy_exact": "honet.control._energy_integration:minimum_energy_exact",
+    # ---- 归一化与统计检验（参考 nctpy）----
+    "normalize_state": "honet.control._normalization:normalize_state",
+    "normalize_weights": "honet.control._normalization:normalize_weights",
+    "null_p_value": "honet.control._normalization:null_p_value",
+    "fdr_p_values": "honet.control._normalization:fdr_p_values",
+    "label_to_state": "honet.control._normalization:label_to_state",
     # ---- 单纯形牵制控制（周进等 2024，仅依赖 numpy）----
     "SimplexRanking": "honet.control._simplicial_control:SimplexRanking",
     "generalized_laplacian": "honet.control._simplicial_control:generalized_laplacian",

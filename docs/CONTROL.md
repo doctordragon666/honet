@@ -337,6 +337,46 @@ print(result.as_dict())           # {(源, 目标): 能量}
 **闭环一致性已验证**：反解输入经前向仿真后的终点误差 1.5e-04；批量能量与
 逐条反解的相对差 2.4e-07。
 
+### 能量积分、归一化与统计检验
+
+**能量积分**用 Simpson 法则（稀疏控制集下 `u` 变化剧烈，梯形法误差偏大）：
+
+```python
+from honet.control import integrate_control_energy
+
+energy = integrate_control_energy(U, dt=1e-3)   # 每个通道的 ∫u²dt
+```
+
+**最小能量的两种算法**：
+
+| 函数 | 方法 | 精度 |
+| --- | --- | --- |
+| `minimum_energy_exact` | 精确 Gramian（块指数法） | 机器精度 |
+| `minimum_energy_fast` | Simpson 型 Gramian 数值积分 | 相对误差 ~1e-4 |
+
+`minimum_energy_fast` 在 `steps` 增大时收敛到精确解，测试验证了这一点。
+
+**归一化**：
+
+```python
+from honet.control import normalize_state, normalize_weights
+
+v = normalize_state(np.array([3.0, 4.0]))        # [0.6, 0.8]
+w = normalize_weights(np.array([10, 20, 30, 40]))  # [1, 4/3, 5/3, 2]
+```
+
+`normalize_weights` 的 `add_constant` 是**整体 +1**（结果落在 `[1, 2]`），
+不是缩放到 `(0, 1]`——后者会改变相对量级。这与 nctpy 一致（逐位验证误差 0）。
+
+**显著性检验**：控制能量本身没有绝对标准，必须和零分布比较。
+
+```python
+from honet.control import null_p_value, fdr_p_values
+
+p = null_p_value(observed, null_distribution)      # 加一平滑的经验 p 值
+adjusted, rejected = fdr_p_values(p_values, alpha=0.05)   # BH 步进法
+```
+
 ---
 
 ## 四、已知边界
