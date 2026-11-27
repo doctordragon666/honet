@@ -51,6 +51,25 @@
   说明「核心层 → 适配层 → 分析层」的单向依赖关系。
 - 新增可选依赖组 `honet[analysis]`、`honet[viz]`、`honet[excel]`、`honet[hat]`、`honet[all]`。
 
+### Added
+
+- **控制框架：从「控制哪些结点」扩展到「怎么控制」**（详见 `docs/CONTROL.md`）
+  - 原先 `honet.control` 只有拓扑层（dilation 检测 / 可达性 / 最小驱动集），
+    缺少动力学、耦合与控制律。新增两层补齐：
+  - **动力学层**（移植 Ma et al., Physica A 653 (2024) 130108）：
+    `HypergraphControlSystem` 把「结点动力学 + 高阶耦合 + 外部输入」组装成
+    `Ẋ = 𝒜X + ℬU`；`hypergraph_laplacian` 构造 m-阶广义 Laplacian；
+    `kalman_rank` / `pbh_rank` / `gramian_rank` 三个可控性判据；
+    `minimum_energy_control` 给出最小能量控制律与状态轨迹。
+  - **单纯形层**（移植周进等, 中国科学: 信息科学 54(3) 2024）：
+    `generalized_laplacian` 构造 `c₁L⁽¹⁾ + c₂L⁽²⁾`；`fiedler_vector` /
+    `algebraic_connectivity` 取谱量；`simplex_delta` 计算选择指标 `Δ^s`；
+    `rank_simplices` 给出牵制优先级；`pinning_matrix` 构造牵制矩阵。
+  - 复现论文四例的 Kalman 秩（10 / 9 / 8 / 6）与最小能量驱动
+    （误差 3.9e-04 / 2.9e-05）；复现脑网络表 1 的 12 个 `Δ^s` 排名
+    （12/12 一致）与定理 3 的一阶近似（预测 0.003992 / 实测 0.003992）。
+  - 两层都只用 numpy / scipy，不需要 HAT；`import honet` 仍不引入第三方依赖。
+
 ### Changed
 
 - **传播模型改为规格驱动，新增模型无需改引擎**（详见 `docs/CONTAGION.md`）

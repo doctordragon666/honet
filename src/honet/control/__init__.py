@@ -1,22 +1,31 @@
-"""honet.control —— 高阶网络的驱动节点控制（dilation 检测、可达性与最小驱动集）。
+"""honet.control —— 高阶网络的驱动节点控制。
 
-本子包迁移自旧库的 ``honcontrol`` 模块，依赖 HypergraphAnalysisToolbox
-（导入名 ``HAT``，属于 ``honet[hat]`` 可选组）。全部符号都是惰性导出的：只有
-真正访问某个符号时才会 import 对应的实现模块，因此 ``import honet`` 不会因此
-拉入 HAT / networkx / pandas。
+本子包有两层能力：
 
-实现分两层，原因是 Python 的导入语义：
+**一、拓扑层（驱动节点选择）**——迁移自旧库的 ``honcontrol`` 模块，依赖
+HypergraphAnalysisToolbox（导入名 ``HAT``，属于 ``honet[hat]`` 可选组）。
+回答「控制哪些结点」：dilation 检测、可达性、最小驱动集。
 
-* ``_`` 前缀的私有模块放真正的算法（``_dilation`` / ``_reachability`` /
-  ``_greedy_accessibility`` / ``_compute_drivers_on_hat`` 等），它们之间可以
-  互相 import；
-* 公开模块（``star_graph`` / ``detect_dilation_and_drivers`` 等）只做带类型
-  签名的转发。若让公开模块互相 import，``import honet.control.star_graph``
-  会把子模块对象写回 ``honet.control`` 的包属性，遮蔽本文件的惰性导出，使
-  ``honet.control.star_graph`` 从函数变成模块。
+**二、动力学层（控制律设计）**——移植自 Ma et al., Physica A 653 (2024)
+130108 的超图网络可控性框架。回答「怎么控制」：把「结点自身动力学 + 高阶
+耦合 + 外部输入」组装成线性系统 ``Ẋ = 𝒜X + ℬU``，给出可控性判据与最小能量
+控制律::
 
-约定：驱动节点一律是 ``0..nnodes-1`` 的整数下标（HAT 内部把结点编号成整数），
-原始结点名用 ``HG.nodes["Names"]`` 反查。
+    𝒜 = I_N ⊗ A + c/(k-1) · L ⊗ Λ,    ℬ = Δ ⊗ B
+
+这一层只依赖 numpy / scipy，不需要 HAT。
+
+全部符号都是惰性导出的：只有真正访问某个符号时才会 import 对应实现模块，
+因此 ``import honet`` 不会因此拉入 HAT / networkx / pandas。
+
+实现分两层的理由（Python 导入语义）：``_`` 前缀的私有模块放真正的算法，
+公开模块只做带类型签名的转发。若让公开模块互相 import，
+``import honet.control.star_graph`` 会把子模块对象写回包属性，遮蔽本文件的
+惰性导出，使 ``honet.control.star_graph`` 从函数变成模块。
+
+约定：拓扑层的驱动节点一律是 ``0..nnodes-1`` 的整数下标（HAT 内部把结点
+编号成整数），原始结点名用 ``HG.nodes["Names"]`` 反查；动力学层的结点下标
+则是 ``HypergraphControlSystem.L`` 的行序。
 """
 
 from __future__ import annotations
@@ -24,6 +33,7 @@ from __future__ import annotations
 from honet._lazy import lazy_getattr
 
 _EXPORTS = {
+    # ---- 拓扑层：驱动节点选择（依赖 HAT）----
     "add_node_fields": "honet.control.add_node_fields:add_node_fields",
     "brute_force_min_driver_sets": (
         "honet.control.brute_force_min_driver_sets:brute_force_min_driver_sets"
@@ -48,11 +58,37 @@ _EXPORTS = {
         "honet.control.random_uniform_hypergraph:random_uniform_hypergraph"
     ),
     "star_graph": "honet.control.star_graph:star_graph",
+    # ---- 动力学层：控制律设计（仅依赖 numpy / scipy）----
+    "HypergraphControlSystem": "honet.control._dynamics:HypergraphControlSystem",
+    "ControlTrajectory": "honet.control._control_law:ControlTrajectory",
+    "hypergraph_laplacian": "honet.control._laplacian:hypergraph_laplacian",
+    "kalman_rank": "honet.control._controllability:kalman_rank",
+    "is_controllable": "honet.control._controllability:is_controllable",
+    "pbh_rank": "honet.control._controllability:pbh_rank",
+    "gramian": "honet.control._controllability:gramian",
+    "gramian_rank": "honet.control._controllability:gramian_rank",
+    "minimum_energy_control": "honet.control._control_law:minimum_energy_control",
+    # ---- 单纯形牵制控制（周进等 2024，仅依赖 numpy）----
+    "SimplexRanking": "honet.control._simplicial_control:SimplexRanking",
+    "generalized_laplacian": "honet.control._simplicial_control:generalized_laplacian",
+    "fiedler_vector": "honet.control._simplicial_control:fiedler_vector",
+    "algebraic_connectivity": "honet.control._simplicial_control:algebraic_connectivity",
+    "simplex_delta": "honet.control._simplicial_control:simplex_delta",
+    "rank_simplices": "honet.control._simplicial_control:rank_simplices",
+    "pinning_matrix": "honet.control._simplicial_control:pinning_matrix",
 }
 
 __all__ = sorted(_EXPORTS)
 
 
 def __getattr__(name: str):
-    """按需加载实现模块（PEP 562）。"""
-    return lazy_getattr(globals(), __name__, _EXPORTS, name, "hat")
+    """按需加载实现模块（PEP 562）。
+
+    拓扑层的符号需要 HAT；动力学层的符号只需要 numpy / scipy。因此先按
+    ``hat`` 组探测，失败时回退到 ``analysis`` 组（numpy / scipy 属于分析
+    依赖），避免只装了 numpy 却因缺 HAT 而无法使用动力学层。
+    """
+    try:
+        return lazy_getattr(globals(), __name__, _EXPORTS, name, "hat")
+    except ImportError:
+        return lazy_getattr(globals(), __name__, _EXPORTS, name, "analysis")

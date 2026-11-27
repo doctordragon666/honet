@@ -53,7 +53,8 @@ honet/
 
 分层架构见 [ARCHITECTURE.md](ARCHITECTURE.md)（含架构图），
 性能设计与缓存机制见 [PERFORMANCE.md](PERFORMANCE.md)，
-传播模型的扩展方式见 [CONTAGION.md](CONTAGION.md)。
+传播模型的扩展方式见 [CONTAGION.md](CONTAGION.md)，
+控制框架（超图可控性 + 单纯形牵制）见 [CONTROL.md](CONTROL.md)。
 
 代码组织约定：
 
