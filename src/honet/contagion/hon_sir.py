@@ -1,14 +1,15 @@
-"""SIR 模型统一入口（按方法枚举分派）。"""
+"""SIR 模型统一入口（``hon_sir`` / 旧名 ``honSIR``）。
+
+实现已收敛到 :func:`honet.contagion._simulate.simulate`；本模块只保留旧签名。
+新代码建议直接用 ``simulate(..., model="SIR")``，或换成 ``"SIER"`` / ``"SIRS"``
+等模型名即可，无需新的入口函数。
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from honet._deps import require
-from honet.contagion._common import choose_initial_infecteds, seed_everything
-from honet.contagion._discrete import simulate_discrete
-from honet.contagion._random_models import simulate_random_discrete, simulate_random_gillespie
-from honet.contagion._strategies import resolve_strategy
+from honet.contagion._simulate import simulate
 from honet.contagion.contagion_method import Contagion_Method
 
 
@@ -29,16 +30,15 @@ def hon_sir(
     按 ``method`` 分派到四种算法：
 
     * ``Discrete`` —— hypernetx 的 ``discrete_SIR``；给了 ``initial_recovereds``
-      时改走 ``discrete_sir_control`` 的语义；
+      时改走控制语义；
     * ``Gillespie`` —— hypernetx 的 ``Gillespie_SIR``；
-    * ``RandomDiscrete`` —— ``random_discrete_sir`` 的语义；
-    * ``RandomGillespie`` —— ``random_gillespie_sir`` 的语义。
+    * ``RandomDiscrete`` / ``RandomGillespie`` —— 带噪声的平均场模型。
 
     参数:
         H: hypernetx 超图对象。
         gamma: 恢复率。
         tau: ``{超边大小: 感染率}``。
-        method: 算法选择，见 :class:`Contagion_Method`。
+        method: 算法选择，见 :class:`~honet.contagion.Contagion_Method`。
         initial_infection: 初始感染者列表；``None`` 时按 ``rho=0.1`` 随机抽。
         initial_recovereds: 受控（强制康复）结点。
         strategy: 传播策略名。
@@ -47,10 +47,7 @@ def hon_sir(
         return_all_data: 是否返回完整迁移数据。
 
     返回:
-        ``(times, S, I, R)`` 四个 numpy 数组，或完整迁移数据。
-
-    抛出:
-        ValueError: ``method`` 不是 :class:`Contagion_Method` 的成员。
+        ``(times, S, I, R)`` 四个序列，或完整迁移数据。
 
     示例:
         >>> import hypernetx as hnx
@@ -59,56 +56,16 @@ def hon_sir(
         >>> len(t) == len(R)
         True
     """
-    seed_everything(seed)
-    dt = 1  # 离散时间步长
-
-    if method == Contagion_Method.Discrete:
-        if initial_recovereds is not None:
-            # 与 discrete_sir_control 一致：受控结点被强制转为 R
-            return simulate_discrete(
-                H,
-                tau,
-                gamma,
-                model="SIR",
-                mode="control",
-                transmission_function=resolve_strategy(strategy),
-                initial_infecteds=initial_infection,
-                initial_recovereds=initial_recovereds,
-                tmin=0,
-                tmax=tmax,
-                dt=dt,
-                return_full_data=return_all_data,
-            )
-
-        function = require("hypernetx", attr="discrete_SIR")
-        kwargs: dict[str, Any] = {
-            "transmission_function": resolve_strategy(strategy),
-            "tmin": 0,
-            "tmax": tmax,
-            "dt": dt,
-            "return_full_data": return_all_data,
-        }
-        # 初始感染者统一走 choose_initial_infecteds，语义仍是「按 rho=0.1 抽样」，
-        # 但保证小图上至少 1 个，避免上游对空初始状态除零。
-        if initial_infection is None:
-            initial_infection = choose_initial_infecteds(H, None, 0.1)
-        return function(H, tau, gamma, initial_infecteds=initial_infection, **kwargs)
-
-    if method == Contagion_Method.Gillespie:
-        function = require("hypernetx", attr="Gillespie_SIR")
-        gillespie_kwargs: dict[str, Any] = {
-            "transmission_function": resolve_strategy(strategy),
-            "tmax": tmax,
-        }
-        if initial_infection is None:
-            initial_infection = choose_initial_infecteds(H, None, 0.1)
-        return function(H, tau, gamma, initial_infecteds=initial_infection, **gillespie_kwargs)
-
-    if method == Contagion_Method.RandomDiscrete:
-        return simulate_random_discrete(H, tau, gamma, model="SIR", rho=0.1, tmax=tmax, dt=dt)
-
-    if method == Contagion_Method.RandomGillespie:
-        return simulate_random_gillespie(H, tau, gamma, model="SIR", rho=0.1, tmax=tmax)
-
-    msg = f"未知的传播方法：{method!r}"
-    raise ValueError(msg)
+    return simulate(
+        H,
+        gamma,
+        tau,
+        model="SIR",
+        method=method,
+        initial_infection=initial_infection,
+        initial_recovereds=initial_recovereds,
+        strategy=strategy,
+        tmax=tmax,
+        seed=seed,
+        return_all_data=return_all_data,
+    )

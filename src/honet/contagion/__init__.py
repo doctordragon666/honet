@@ -19,6 +19,12 @@ _EXPORTS = {
     # 传播模型入口
     "hon_sis": "honet.contagion.hon_sis:hon_sis",
     "hon_sir": "honet.contagion.hon_sir:hon_sir",
+    "simulate": "honet.contagion._simulate:simulate",
+    # 仓室模型规格（可扩展：注册新规格即可支持新模型）
+    "CompartmentModel": "honet.contagion._model:CompartmentModel",
+    "register_model": "honet.contagion._model:register_model",
+    "get_model": "honet.contagion._model:get_model",
+    "available_models": "honet.contagion._model:available_models",
     # 参数与相图
     "generate_tau": "honet.contagion.generate_tau:generate_tau",
     "is_stable": "honet.contagion.is_stable:is_stable",
@@ -55,16 +61,32 @@ _EXPORTS = {
 
 __all__ = sorted(_EXPORTS)
 
+#: 内置模型规格的便捷访问名。这些是**数据对象**而非函数，因此不放进
+#: ``__all__``（子包约定 ``__all__`` 里的名字必须可调用，测试会校验）。
+#: 需要时用 ``contagion.MODELS["SIER"]`` 或 ``contagion.get_model("SIER")``。
+MODELS = ("SIS", "SIR", "SIRS", "SIER", "SEIR", "SI")
+
 
 def __getattr__(name: str):
     """按需加载实现模块（PEP 562）。
 
-    额外处理一处命名冲突：本子包的实现模块文件名与公开函数同名（如
-    ``honet/contagion/hon_sis.py`` 与函数 ``hon_sis``）。Python 在 import
-    子模块后会把包属性 ``hon_sis`` 指向**模块对象**，遮蔽惰性导出的函数，
-    表现为 ``TypeError: 'module' object is not callable``。因此在解析出值之后，
-    把 ``_EXPORTS`` 中同名属性也一并绑定成同一个对象。
+    额外处理两件事：
+
+    1. 本子包的实现模块文件名与公开函数同名（如 ``honet/contagion/hon_sis.py``
+       与函数 ``hon_sis``）。Python 在 import 子模块后会把包属性 ``hon_sis``
+       指向**模块对象**，遮蔽惰性导出的函数，表现为
+       ``TypeError: 'module' object is not callable``。因此在解析出值之后，
+       把 ``_EXPORTS`` 中同名属性也一并绑定成同一个对象。
+    2. ``MODELS`` 里的模型常量（``contagion.SIER`` 等）按需从
+       ``honet.contagion._model`` 取，避免 import 期就构造规格对象。
     """
+    if name in MODELS:
+        from honet.contagion._model import get_model
+
+        value = get_model(name)
+        globals()[name] = value
+        return value
+
     value = lazy_getattr(globals(), __name__, _EXPORTS, name, "analysis")
     canonical = _EXPORTS[name].partition(":")[2]
     if canonical in _EXPORTS:

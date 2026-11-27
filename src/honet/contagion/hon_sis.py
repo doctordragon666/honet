@@ -1,14 +1,15 @@
-"""SIS 模型统一入口（按方法枚举分派）。"""
+"""SIS 模型统一入口（``hon_sis`` / 旧名 ``honSIS``）。
+
+实现已收敛到 :func:`honet.contagion._simulate.simulate`；本模块只保留旧签名，
+保证既有调用方与旧代码不受影响。新代码建议直接用 ``simulate(..., model="SIS")``
+或更通用的模型名。
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from honet._deps import require
-from honet.contagion._common import choose_initial_infecteds, seed_everything
-from honet.contagion._discrete import simulate_discrete
-from honet.contagion._random_models import simulate_random_discrete, simulate_random_gillespie
-from honet.contagion._strategies import resolve_strategy
+from honet.contagion._simulate import simulate
 from honet.contagion.contagion_method import Contagion_Method
 
 
@@ -29,16 +30,16 @@ def hon_sis(
     按 ``method`` 分派到四种算法：
 
     * ``Discrete`` —— hypernetx 的 ``discrete_SIS``；给了 ``control_nodes``
-      时改走 ``discrete_sis_control`` 的语义；
+      时改走脉冲控制语义；
     * ``Gillespie`` —— hypernetx 的 ``Gillespie_SIS``；
-    * ``RandomDiscrete`` —— ``random_discrete_sis`` 的语义；
-    * ``RandomGillespie`` —— ``random_gillespie_sis`` 的语义。
+    * ``RandomDiscrete`` —— 带噪声的离散时间平均场模型；
+    * ``RandomGillespie`` —— 带噪声的连续时间平均场模型。
 
     参数:
         H: hypernetx 超图对象。
         gamma: 恢复率。
         tau: ``{超边大小: 感染率}``。
-        method: 算法选择，见 :class:`Contagion_Method`。
+        method: 算法选择，见 :class:`~honet.contagion.Contagion_Method`。
         initial_infection: 初始感染者列表；``None`` 时按 ``rho=0.1`` 随机抽。
         strategy: 传播策略名，见 :mod:`honet.contagion._strategies`。
         tmax: 模拟终止时间。
@@ -47,10 +48,7 @@ def hon_sis(
         control_nodes: 控制结点；仅 ``Discrete`` 方法使用。
 
     返回:
-        ``(times, S, I)`` 三个 numpy 数组，或完整迁移数据。
-
-    抛出:
-        ValueError: ``method`` 不是 :class:`Contagion_Method` 的成员。
+        ``(times, S, I)`` 三个序列，或完整迁移数据。
 
     示例:
         >>> import hypernetx as hnx
@@ -59,57 +57,16 @@ def hon_sis(
         >>> len(t) == len(I)
         True
     """
-    seed_everything(seed)
-    dt = 1  # 离散时间步长
-
-    if method == Contagion_Method.Discrete:
-        if control_nodes is not None:
-            # 与 discrete_sis_control 的「非 target」分支一致：collective + 脉冲控制
-            return simulate_discrete(
-                H,
-                tau,
-                gamma,
-                model="SIS",
-                mode="pulse",
-                transmission_function=require("hypernetx", attr="collective_contagion"),
-                initial_recovereds=control_nodes,
-                rho=0.1,
-                tmin=0,
-                tmax=tmax,
-                dt=dt,
-                return_full_data=return_all_data,
-            )
-
-        function = require("hypernetx", attr="discrete_SIS")
-        kwargs: dict[str, Any] = {
-            "transmission_function": resolve_strategy(strategy),
-            "tmin": 0,
-            "tmax": tmax,
-            "dt": dt,
-            "return_full_data": return_all_data,
-        }
-        # 初始感染者统一走 choose_initial_infecteds，避免 rho 在小图上算出 0 个
-        # 结点、进而让上游 Gillespie 分支除零；语义仍是「按 rho=0.1 抽样」。
-        if initial_infection is None:
-            initial_infection = choose_initial_infecteds(H, None, 0.1)
-        return function(H, tau, gamma, initial_infecteds=initial_infection, **kwargs)
-
-    if method == Contagion_Method.Gillespie:
-        function = require("hypernetx", attr="Gillespie_SIS")
-        gillespie_kwargs: dict[str, Any] = {
-            "transmission_function": resolve_strategy(strategy),
-            "tmax": tmax,
-            "return_full_data": return_all_data,
-        }
-        if initial_infection is None:
-            initial_infection = choose_initial_infecteds(H, None, 0.1)
-        return function(H, tau, gamma, initial_infecteds=initial_infection, **gillespie_kwargs)
-
-    if method == Contagion_Method.RandomDiscrete:
-        return simulate_random_discrete(H, tau, gamma, model="SIS", rho=0.1, tmax=tmax, dt=dt)
-
-    if method == Contagion_Method.RandomGillespie:
-        return simulate_random_gillespie(H, tau, gamma, model="SIS", rho=0.1, tmax=tmax)
-
-    msg = f"未知的传播方法：{method!r}"
-    raise ValueError(msg)
+    return simulate(
+        H,
+        gamma,
+        tau,
+        model="SIS",
+        method=method,
+        initial_infection=initial_infection,
+        strategy=strategy,
+        tmax=tmax,
+        seed=seed,
+        return_all_data=return_all_data,
+        control_nodes=control_nodes,
+    )
