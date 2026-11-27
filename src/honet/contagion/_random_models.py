@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import random
 from typing import Any
 
 from honet._deps import require
@@ -36,11 +37,24 @@ def _initial_state(
     rho: float | None,
     initial_infecteds: Any,
     spec: CompartmentModel | None = None,
+    rng: Any = None,
 ) -> tuple[list[Any], dict[Any, str]]:
-    """按 ``rho`` 或显式列表确定初始状态（保证小图上也有感染者）。"""
+    """按 ``rho`` 或显式列表确定初始状态（保证小图上也有感染者）。
+
+    ``rng`` 是 numpy 随机源（``Generator``），但初始感染者的抽样走
+    ``random.Random.sample``。这里从 numpy 源派生一个整数种子来构造 python
+    随机源，使「同一 numpy 源 → 同一初始集合」仍可复现，且不碰全局状态。
+    """
     spec = spec or SIS
     nodes = list(H.nodes)
-    infected = set(choose_initial_infecteds(H, initial_infecteds, rho))
+    py_rng = None
+    if isinstance(rng, random.Random):
+        py_rng = rng
+    elif rng is not None and hasattr(rng, "integers"):
+        # 从 numpy Generator 派生种子，保证不读取全局 random 状态
+        py_rng = random.Random(int(rng.integers(0, 2**63 - 1)))
+    # 其余情况（含 rng 为 np.random 模块的旧路径）保持全局 random，行为不变
+    infected = set(choose_initial_infecteds(H, initial_infecteds, rho, rng=py_rng))
     infected_state = spec.infected[0]
     return nodes, {
         node: (infected_state if node in infected else spec.susceptible) for node in nodes
@@ -79,6 +93,7 @@ def simulate_random_discrete(
     tmin: float = 0,
     tmax: float = float("Inf"),
     dt: float = 1.0,
+    rng: Any = None,
     **args: Any,
 ) -> tuple[list[float], list[int], list[int]] | tuple[list[float], list[int], list[int], list[int]]:
     """带噪声的离散时间 SIS / SIR 模拟。
@@ -102,12 +117,13 @@ def simulate_random_discrete(
     """
     np = require("numpy")
     spec = _resolve(model)
+    rng = rng if rng is not None else np.random
 
     beta = float(np.mean(list(tau.values())))
     degrees = _degrees(H)
     output_states = spec.output_states()
 
-    nodes, state = _initial_state(H, rho, initial_infecteds, spec)
+    nodes, state = _initial_state(H, rho, initial_infecteds, spec, rng)
 
     t: list[float] = []
     series: dict[str, list[int]] = {name: [] for name in output_states}
@@ -125,15 +141,15 @@ def simulate_random_discrete(
             current = state[node]
             # 被感染：仅对可被感染的状态成立（SIER 里 S 与 E 都可被感染）
             if spec.can_be_infected(current):
-                noise = np.random.normal(0, sigma1 * degrees[node] * theta)
+                noise = rng.normal(0, sigma1 * degrees[node] * theta)
                 infection_prob = max(0.0, min(1.0, beta * degrees[node] * theta + noise))
-                if np.random.random() < infection_prob * dt:
+                if rng.random() < infection_prob * dt:
                     new_state[node] = spec.on_infection[current]
             # 恢复 / 离开当前仓室
             elif spec.can_recover(current):
-                noise = np.random.normal(0, sigma2)
+                noise = rng.normal(0, sigma2)
                 recovery_prob = max(0.0, min(1.0, gamma + noise))
-                if np.random.random() < recovery_prob * dt:
+                if rng.random() < recovery_prob * dt:
                     new_state[node] = spec.on_recovery[current]
 
         state = new_state
@@ -154,6 +170,7 @@ def simulate_random_gillespie(
     initial_infecteds: Any = None,
     tmin: float = 0,
     tmax: float = float("Inf"),
+    rng: Any = None,
     **args: Any,
 ) -> tuple[list[float], list[int], list[int]] | tuple[list[float], list[int], list[int], list[int]]:
     """带噪声的 Gillespie（连续时间）SIS / SIR 模拟。
@@ -178,12 +195,13 @@ def simulate_random_gillespie(
     """
     np = require("numpy")
     spec = _resolve(model)
+    rng = rng if rng is not None else np.random
 
     beta = float(np.mean(list(tau.values())))
     degrees = _degrees(H)
     output_states = spec.output_states()
 
-    nodes, state = _initial_state(H, rho, initial_infecteds, spec)
+    nodes, state = _initial_state(H, rho, initial_infecteds, spec, rng)
 
     def counts() -> dict[str, int]:
         return {name: sum(1 for node in nodes if state[node] == name) for name in output_states}
@@ -202,11 +220,11 @@ def simulate_random_gillespie(
         for node in nodes:
             current = state[node]
             if spec.can_be_infected(current):
-                noise = np.random.normal(0, sigma1 * degrees[node] * theta)
+                noise = rng.normal(0, sigma1 * degrees[node] * theta)
                 rate = max(0.0, beta * degrees[node] * theta + noise)
                 susceptible_rates.append((node, rate))
             elif spec.can_recover(current):
-                noise = np.random.normal(0, sigma2)
+                noise = rng.normal(0, sigma2)
                 recovery_rates.append((node, max(0.0, gamma + noise)))
 
         total_infection_rate = sum(rate for _, rate in susceptible_rates)
@@ -216,22 +234,22 @@ def simulate_random_gillespie(
         if total_rate <= 0:
             break
 
-        current_time += float(np.random.exponential(1 / total_rate))
+        current_time += float(rng.exponential(1 / total_rate))
         if current_time > tmax:
             break
 
         probabilities = [total_infection_rate / total_rate, total_recovery_rate / total_rate]
-        event_type = np.random.choice(["infection", "recovery"], p=probabilities)
+        event_type = rng.choice(["infection", "recovery"], p=probabilities)
 
         if event_type == "infection" and total_infection_rate > 0:
             weights = [rate / total_infection_rate for _, rate in susceptible_rates]
             total_weight = sum(weights)
             if total_weight > 0:
                 node_probs = [weight / total_weight for weight in weights]
-                selected = np.random.choice([n for n, _ in susceptible_rates], p=node_probs)
+                selected = rng.choice([n for n, _ in susceptible_rates], p=node_probs)
                 state[selected] = spec.on_infection[state[selected]]
         elif recovery_rates:
-            selected = np.random.choice([n for n, _ in recovery_rates])
+            selected = rng.choice([n for n, _ in recovery_rates])
             state[selected] = spec.on_recovery[state[selected]]
 
         step_counts = counts()

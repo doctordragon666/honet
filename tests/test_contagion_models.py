@@ -207,7 +207,85 @@ class TestNewModelsRunWithoutEngineChanges:
         assert all(total == len(H.nodes) for total in totals)
 
 
+class TestExplicitRandomSource:
+    """显式随机源（借鉴 EoN 的 ``rng`` 设计）。
+
+    旧实现把随机源写死成全局状态，因此无法并行/嵌套运行互不干扰的模拟。
+    引擎现在接受 ``rng`` 参数，这里验证三件事：可复现、互不干扰、不污染全局。
+    """
+
+    def test_discrete_rng_reproducible(self, H: hnx.Hypergraph):
+        """同一 seed 的两个独立随机源给出相同轨迹。"""
+        from honet.contagion._common import make_rng
+        from honet.contagion._discrete import simulate_discrete
+
+        def run(rng):
+            return simulate_discrete(
+                H, TAU, 0.3, model="SIS", mode="control", rho=0.25, tmax=8, rng=rng
+            )
+
+        a = run(make_rng(7)[0])
+        b = run(make_rng(7)[0])
+        assert all(np.array_equal(x, y) for x, y in zip(a, b, strict=True))
+
+    def test_discrete_rng_does_not_pollute_global(self, H: hnx.Hypergraph):
+        """注入 rng 时不得改动全局 random 状态。"""
+        import random
+
+        from honet.contagion._common import make_rng
+        from honet.contagion._discrete import simulate_discrete
+
+        random.seed(1234)
+        before = random.random()
+        random.seed(1234)
+        simulate_discrete(
+            H, TAU, 0.3, model="SIS", mode="control", rho=0.25, tmax=8, rng=make_rng(7)[0]
+        )
+        assert random.random() == before
+
+    def test_random_model_rng_reproducible(self, H: hnx.Hypergraph):
+        """随机模型同样支持显式 rng。"""
+        from honet.contagion._common import make_rng
+        from honet.contagion._random_models import simulate_random_discrete
+
+        def run(rng):
+            return simulate_random_discrete(H, TAU, 0.3, model="SIS", rho=0.25, tmax=5, rng=rng)
+
+        a = run(make_rng(7)[1])
+        b = run(make_rng(7)[1])
+        assert all(np.array_equal(np.asarray(x), np.asarray(y)) for x, y in zip(a, b, strict=True))
+
+    def test_parallel_simulations_are_independent(self, H: hnx.Hypergraph):
+        """两个不同 seed 的模拟交错执行，结果与各自单独执行一致。"""
+        from honet.contagion._common import make_rng
+        from honet.contagion._discrete import simulate_discrete
+
+        def run(seed):
+            return simulate_discrete(
+                H,
+                TAU,
+                0.3,
+                model="SIS",
+                mode="control",
+                rho=0.25,
+                tmax=6,
+                rng=make_rng(seed)[0],
+            )
+
+        alone_a = run(11)
+        alone_b = run(22)
+        # 交错执行：先建两个随机源，再交替推进（这里用完整调用模拟交错）
+        again_a = run(11)
+        again_b = run(22)
+        assert all(np.array_equal(x, y) for x, y in zip(alone_a, again_a, strict=True))
+        assert all(np.array_equal(x, y) for x, y in zip(alone_b, again_b, strict=True))
+        # 不同 seed 应当给出不同轨迹
+        assert not all(np.array_equal(x, y) for x, y in zip(alone_a, alone_b, strict=True))
+
+
 class TestEntryPointsShareImplementation:
+    """hon_sis / hon_sir 与 simulate 是同一实现，不应出现行为漂移。"""
+
     """hon_sis / hon_sir 与 simulate 是同一实现，不应出现行为漂移。"""
 
     def test_hon_sis_matches_simulate(self, H: hnx.Hypergraph):

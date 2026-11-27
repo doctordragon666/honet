@@ -53,6 +53,7 @@ def simulate(
     seed: int | None = 42,
     return_all_data: bool = False,
     control_nodes: Any = None,
+    rng: Any = None,
 ) -> Any:
     """模拟任意已注册仓室模型在超图上的传播过程。
 
@@ -73,6 +74,10 @@ def simulate(
         return_all_data: 是否返回完整迁移数据。
         control_nodes: 控制结点；仅 ``Discrete`` 方法使用，等价于
             ``initial_recovereds``（保留旧参数名）。
+        rng: 显式随机源。传入 ``random.Random``（离散引擎）或
+            ``numpy.random.Generator``（随机模型），可避免读写全局随机状态，
+            从而并行/嵌套运行互不干扰的模拟。为 ``None`` 时沿用 ``seed``
+            设置的全局状态（旧行为）。
 
     返回:
         ``(times, *各仓室序列)``。``"SIS"`` 返回三个序列，``"SIR"`` / ``"SIER"``
@@ -113,6 +118,7 @@ def simulate(
                 tmax=tmax,
                 dt=dt,
                 return_full_data=return_all_data,
+                rng=rng,
             )
 
         function_name = _HNX_FUNCTIONS.get((spec.name, method))
@@ -132,6 +138,7 @@ def simulate(
                 tmax=tmax,
                 dt=dt,
                 return_full_data=return_all_data,
+                rng=rng,
             )
 
         function = require("hypernetx", attr=function_name)
@@ -171,10 +178,12 @@ def simulate(
         return function(H, tau, gamma, initial_infecteds=initial_infection, **gillespie_kwargs)
 
     if method == Contagion_Method.RandomDiscrete:
-        return simulate_random_discrete(H, tau, gamma, model=spec, rho=0.1, tmax=tmax, dt=dt)
+        return simulate_random_discrete(
+            H, tau, gamma, model=spec, rho=0.1, tmax=tmax, dt=dt, rng=rng
+        )
 
     if method == Contagion_Method.RandomGillespie:
-        return simulate_random_gillespie(H, tau, gamma, model=spec, rho=0.1, tmax=tmax)
+        return simulate_random_gillespie(H, tau, gamma, model=spec, rho=0.1, tmax=tmax, rng=rng)
 
     msg = f"未知的传播方法：{method!r}"
     raise ValueError(msg)

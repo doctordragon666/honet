@@ -49,6 +49,7 @@ def simulate_discrete(
     tmax: float = float("Inf"),
     dt: float = 1.0,
     return_full_data: bool = False,
+    rng: Any = None,
     **args: Any,
 ) -> Any:
     """离散时间仓室模型模拟的统一引擎。
@@ -70,6 +71,9 @@ def simulate_discrete(
         tmax: 模拟终止时间。
         dt: 时间步长。
         return_full_data: 为 ``True`` 时返回 ``{时刻: 迁移事件列表}``。
+        rng: 显式随机源（``random.Random`` 实例）。为 ``None`` 时沿用全局
+            ``random`` 状态（与旧行为一致）；给出时所有随机判定都走该实例，
+            因此可以并行/嵌套运行互不干扰的模拟。
         **args: 透传给 ``transmission_function`` 的额外参数。
 
     返回:
@@ -86,6 +90,9 @@ def simulate_discrete(
     np = require("numpy")
     spec = resolve_model(model)
 
+    # 显式随机源优先；未给出时退回全局 random（保持旧行为与旧结果）
+    _random = rng.random if rng is not None else random.random
+
     if mode not in ALL_MODES:
         msg = f"未知的 mode：{mode!r}，只支持 {ALL_MODES}"
         raise ValueError(msg)
@@ -93,7 +100,7 @@ def simulate_discrete(
     if transmission_function is None:
         transmission_function = require("hypernetx", attr="threshold")
 
-    infecteds = choose_initial_infecteds(H, initial_infecteds, rho)
+    infecteds = choose_initial_infecteds(H, initial_infecteds, rho, rng=rng)
     recovereds = normalize_nodes(H, initial_recovereds)
     exposeds = normalize_nodes(H, initial_exposeds)
 
@@ -186,7 +193,7 @@ def simulate_discrete(
 
             # 1) 恢复 / 离开当前仓室
             if spec.can_recover(current):
-                recovered = random.random() <= gamma * dt
+                recovered = _random() <= gamma * dt
                 if not recovered and node in recovereds:
                     # 控制模式：受控结点无条件恢复；脉冲模式：仅在受控期内恢复
                     recovered = mode == "control" or over_threshold(t)
@@ -200,7 +207,7 @@ def simulate_discrete(
                     members = H.edges[edge_id]
                     # 注意：传的是「上一步的 status」，不是本步正在改的 new_status
                     infected_here = transmission_function(node, status, members, **args)
-                    if random.random() <= tau[len(members)] * infected_here * dt:
+                    if _random() <= tau[len(members)] * infected_here * dt:
                         shift(node, current, spec.on_infection[current])
                         break
                 else:
