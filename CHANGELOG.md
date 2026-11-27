@@ -53,6 +53,19 @@
 
 ### Added
 
+- **控制框架新增前向仿真与批量控制任务**（参考 nctpy）
+  - `_simulate_system.py`：`simulate_system` 给定输入正算轨迹（连续时间用
+    增广矩阵指数的精确分段推进，离散时间直接迭代）；`simulate_impulse`
+    封装阶跃刺激场景。
+  - `_batch_control.py`：`expand_states` 把标签向量展开成初态/终态矩阵；
+    `control_energy_matrix` 一次算出所有状态对之间的控制能量，
+    `BatchEnergyResult` 提供 `hardest()` / `easiest()` / `as_dict()`。
+  - **闭环自检**：反解（`minimum_energy_control`）的输入喂回前向仿真，
+    终点误差 1.5e-04；批量能量与逐条反解相对差 2.4e-07。这两个测试把
+    「反解」与「正算」两个方向的模块绑定在一起，任一侧改动都会被捕获。
+
+### Added
+
 - **控制框架新增稳态层：网络控制入口 + 带约束最优控制**（参考 nctpy）
   - 补齐与 nctpy 对齐的三块能力，全部只用 numpy / scipy：
   - **稳态与能量分析**（`_steady_state.py`）：`matrix_normalization` 谱归一化、

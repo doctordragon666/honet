@@ -80,6 +80,13 @@ _EXPORTS = {
     # ---- 带状态约束的最优控制（参考 nctpy）----
     "OptimalControlResult": "honet.control._optimal_control:OptimalControlResult",
     "optimal_control": "honet.control._optimal_control:optimal_control",
+    # ---- 前向仿真与批量控制任务（参考 nctpy）----
+    "SimulationResult": "honet.control._simulate_system:SimulationResult",
+    "simulate_system": "honet.control._simulate_system:simulate_system",
+    "simulate_impulse": "honet.control._simulate_system:simulate_impulse",
+    "BatchEnergyResult": "honet.control._batch_control:BatchEnergyResult",
+    "expand_states": "honet.control._batch_control:expand_states",
+    "control_energy_matrix": "honet.control._batch_control:control_energy_matrix",
     # ---- 单纯形牵制控制（周进等 2024，仅依赖 numpy）----
     "SimplexRanking": "honet.control._simplicial_control:SimplexRanking",
     "generalized_laplacian": "honet.control._simplicial_control:generalized_laplacian",

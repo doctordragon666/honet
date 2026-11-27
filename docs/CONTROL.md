@@ -297,6 +297,46 @@ print(result.final_error, result.energy)
 **与 nctpy 的数值对照**（`rho`/`S` 三组参数）：状态误差 ≤7.8e-16、
 输入误差 ≤2.9e-15，达到机器精度。
 
+### 前向仿真与批量控制任务
+
+反解（`minimum_energy_control` / `optimal_control`）与正算
+（`simulate_system`）方向相反，两者合起来构成开环控制的闭环自检：
+
+```python
+from honet.control import minimum_energy_control, simulate_system
+
+solved = minimum_energy_control(A, B, x0, xf, T=2.0)
+forward = simulate_system(A, B, x0, solved.inputs, dt=2.0 / 1000)
+assert np.linalg.norm(forward.final_state - xf) < 1e-3   # 反解正确
+```
+
+`simulate_impulse` 是便捷封装，用于模拟「持续刺激某几个结点」：
+
+```python
+from honet.control import simulate_impulse
+
+result = simulate_impulse(A, B, np.zeros(N), [1.0, 0, 0, 0], steps=8000)
+# 稳态应趋近 -A⁻¹Bu
+```
+
+脑网络控制文献里的常见分析是**所有状态对之间的转移**（如 65 个脑区分成若干
+功能系统，考察系统 A → B 的能量）。`control_energy_matrix` 一次算完：
+
+```python
+from honet.control import control_energy_matrix
+
+result = control_energy_matrix(A_norm, np.eye(N), labels, T=1.0)
+print(result.energies)            # (n_states, n_states)
+print(result.hardest())           # 最难驱动的一对
+print(result.as_dict())           # {(源, 目标): 能量}
+```
+
+`labels` 是长度 `N` 的标签序列（如 `["A","A","B","B","C","C"]`），
+`expand_states` 可单独用于把标签展开成初态/终态矩阵。
+
+**闭环一致性已验证**：反解输入经前向仿真后的终点误差 1.5e-04；批量能量与
+逐条反解的相对差 2.4e-07。
+
 ---
 
 ## 四、已知边界
