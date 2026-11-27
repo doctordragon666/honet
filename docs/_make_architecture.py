@@ -55,7 +55,7 @@ ANALYSIS = [
     ("plot/", "绘图", "13", "viz"),
     ("control/", "驱动节点控制", "12", "hat"),
     ("attack/", "攻击鲁棒性", "6", "analysis"),
-    ("contagion/", "传播动力学 SIS / SIR", "24", "analysis"),
+    ("contagion/", "传播动力学 · 规格驱动，可扩 SIS/SIR/SIER", "32", "analysis"),
     ("community/", "社区发现", "15", "analysis"),
     ("metrics/", "结点 / 超边 / 全局指标", "14", "analysis"),
     ("build/", "构建与随机生成", "6", "analysis"),
@@ -236,8 +236,8 @@ def main() -> None:
     )
     ax.text(
         0.45, 0.18,
-        "验证：542 passed · ruff check / format 全通过 · "
-        "指标缓存命中后提速 55–21000× · import honet 不引入第三方依赖",
+        "验证：603 passed · ruff check / format 全通过 · "
+        "指标缓存命中后提速 55–21000× · 传播模型可注册扩展",
         fontsize=8.5, color="#78909c", ha="left", va="center", family=FONT,
     )
 
