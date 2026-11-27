@@ -63,12 +63,11 @@ def _compute_drivers_on_hat(HG: Any, out_csv: str | None = "drivers.csv") -> dic
     if node_count <= BRUTE_FORCE_LIMIT:
         dilation_exists, drivers_final, algorithm = _brute_force(HG, node_count)
     else:
-        _, _, driver_nodes, _ = detect_dilation_and_drivers(HG, node_count)
-        if detect_dilation_with_given_drivers(HG, driver_nodes):
-            # 匹配结果仍存在 dilation：该超图无法完全控制，但仍返回匹配得到的候选集
-            dilation_exists = True
-        else:
-            dilation_exists = False
+        # dilation_exists 取「初始最大匹配是否覆盖全部结点」这一口径（与旧实现
+        # 一致）：初始匹配覆盖不全即说明存在膨胀、需要驱动结点介入。
+        # 注意不要改成「补上驱动后是否仍不可控」——那是另一个问题（该图能否被
+        # 完全控制），旧实现的返回值始终来自初始匹配。
+        dilation_exists, _, driver_nodes, _ = detect_dilation_and_drivers(HG, node_count)
         initial_drivers = set(driver_nodes)
         if node_count <= GREEDY_LIMIT:
             algorithm = "matching_plus_greedy"

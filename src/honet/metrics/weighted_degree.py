@@ -16,29 +16,25 @@ from honet._deps import require
 from honet._topology import topology
 
 
-def _has_weights(H: Any) -> bool:
-    """判断超图是否携带非平凡权重。"""
-    try:
-        raw = H.edges.incidence_dict
-        if not isinstance(raw, dict):
-            raw = raw()
-        weights = getattr(H.edges, "weights", None)
-        if weights is not None:
-            return any(float(w) != 1.0 for w in weights)
-    except Exception:  # noqa: BLE001
-        return False
-    return False
-
-
 def _compute(H: Any) -> dict[Any, float]:
-    """计算加权度：有权重时走关联矩阵，否则直接用度值。"""
-    if not _has_weights(H):
-        return {node: float(degree) for node, degree in topology(H).degrees.items()}
+    """计算加权度：有权重时走关联矩阵，否则直接用度值。
 
+    权重检测不能依赖 ``H.edges.weights``——hypernetx 2.4.3 没有这个属性
+    （带 ``cell_weight_col`` 构建的超图也照样没有），据此判断会把加权超图
+    误当成无权超图，得出错误的度值。这里直接看关联矩阵：只有当矩阵里所有
+    非零元都是 1 时才走快速路径（此时加权度恒等于度）。
+    """
     np = require("numpy")
     B, node_names, _ = H.incidence_matrix(index=True, weights=True)
-    values = np.asarray(B.sum(axis=1)).flatten()
-    return {node: float(w) for node, w in zip(node_names, values, strict=True)}
+
+    data = B.data if hasattr(B, "data") else np.asarray(B).ravel()
+    if data.size and not np.all(data == 1):
+        values = np.asarray(B.sum(axis=1)).flatten()
+        return {node: float(w) for node, w in zip(node_names, values, strict=True)}
+
+    # 无权（或权重全为 1）：加权度等于度，用索引里的度值即可
+    degrees = topology(H).degrees
+    return {node: float(degrees.get(node, 0)) for node in node_names}
 
 
 def weighted_degree(H: Any) -> dict[Any, float]:
