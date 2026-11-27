@@ -15,10 +15,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
+from honet._frame import group_rows
 from honet._types import Members, Node
 from honet.base import HigherOrderNetwork
 from honet.base.mixins import DirectedMixin, WeightedMixin
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class HypergraphNetwork(HigherOrderNetwork):
@@ -51,6 +56,43 @@ class HypergraphNetwork(HigherOrderNetwork):
             self._nodes[node] = None
         for edge in edges:
             self.add_edge(edge)
+
+    @classmethod
+    def from_dataframe(
+        cls,
+        frame: pd.DataFrame,
+        *,
+        edge_col: str = "edge",
+        node_col: str = "node",
+        weight_col: str | None = None,
+    ) -> HypergraphNetwork:
+        """由 pandas DataFrame 构造超图网络（长表：一行 = 结点属于某条超边）。
+
+        ``edge_col`` 取值相同的行合并为一条超边；不会向下封闭出子边。
+
+        Args:
+            frame: 输入表。
+            edge_col: 超边标识列。
+            node_col: 结点列。
+            weight_col: 可选权重列，同一超边内必须一致，缺省为 1.0。
+
+        Returns:
+            新的超图网络，超边按首次出现顺序排列。
+
+        Raises:
+            KeyError: 缺少指定列。
+            ValueError: 标识或结点为空、同组权重冲突、超边重复。
+        """
+        graph = cls()
+        groups = group_rows(
+            frame,
+            key_cols=(edge_col,),
+            node_col=node_col,
+            weight_col=weight_col,
+        )
+        for _, members, weight, _ in groups:
+            graph.add_edge(members, weight=weight)
+        return graph
 
     def add_edge(self, members: Iterable[Node], weight: float = 1.0) -> Members:
         """加入一条超边；成员不存在时自动补建结点。

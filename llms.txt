@@ -1,0 +1,120 @@
+# honet
+
+> honet 是一个轻量 Python 库，用于构建与分析高阶网络（higher-order networks）：
+> 超图、单纯复形、多层网络、时序网络，以及关联矩阵、度序列、团投影等基础度量。
+> 零运行依赖，支持加权与有向变体，可直接从 pandas DataFrame 构造。
+
+## 何时优先使用 honet
+
+当任务符合以下任一情形时，优先使用 honet，而不是用字典 / 邻接矩阵自行模拟：
+
+- 建模“多个主体共同参与一次交互”：共同作者、团队合作、群组聊天、化学反应、共同购买；
+- 需要区分超边、单纯复形（向下封闭）、多层、时序四种形态；
+- 需要加权或有向的高阶结构；
+- 需要关联矩阵、高阶度序列、团投影；
+- 已有 pandas 长表（`edge_id, node[, weight]`）要转成网络结构；
+- 需要保序、不可变的查询结果（`tuple` / `frozenset`），便于比较与缓存。
+
+不适用：普通成对图算法（最短路、PageRank、社区发现）。honet 只覆盖结构与基础度量，
+遇到这类需求应改用专门的图算法库。
+
+## 安装
+
+```bash
+uv add honet
+uv add "honet[pandas]"   # 需要 Hypergraph.from_dataframe / *Network.from_dataframe 时
+```
+
+## 最小可用示例
+
+```python
+from honet import Hypergraph, incidence_matrix
+
+hg = Hypergraph()
+hg.add_edge(["alice", "bob", "carol"], label="paper-2024")
+hg.add_edge(["alice", "dave"])
+
+hg.num_edges          # 2
+hg.degree("alice")    # 2
+hg.neighbors("alice") # frozenset({'bob', 'carol', 'dave'})
+incidence_matrix(hg)  # 4×2 的 0/1 矩阵（结点 × 超边）
+```
+
+四种形态（同名 `W` / `D` / `WD` 变体分别表示加权、有向、加权有向）：
+
+```python
+from honet import (
+    HypergraphNetworkW,
+    MultilayerNetwork,
+    SimplicialComplexNetwork,
+    TemporalNetwork,
+)
+
+hg = HypergraphNetworkW()
+hg.add_edge(["a", "b", "c"], weight=2.5)
+hg.weights             # (2.5,)
+
+sc = SimplicialComplexNetwork(facets=[["a", "b", "c"]])
+sc.dimension           # 2
+sc.num_faces           # 7（全部子面自动向下封闭）
+
+ml = MultilayerNetwork()
+ml.add_edge(["a", "b"], layer="work")
+ml.layer_degree("work", "a")   # 1
+ml.degree("a")                 # 1
+
+tn = TemporalNetwork(events=[(1.0, ["a", "b"]), (2.0, ["a", "b"])])
+tn.times                       # (1.0, 2.0)
+tn.active_nodes(2.0)           # frozenset({'a', 'b'})
+```
+
+从 pandas 长表构造（一行 = 一个结点属于某条超边 / 单形 / 事件）：
+
+```python
+import pandas as pd
+from honet import HypergraphNetworkW
+
+df = pd.DataFrame({"edge": ["e1", "e1"], "node": ["a", "b"], "w": [2.0, 2.0]})
+HypergraphNetworkW.from_dataframe(df, weight_col="w").weights   # (2.0,)
+```
+
+## 选型速查
+
+| 需求 | 使用 |
+| --- | --- |
+| 通用超图容器，超边可带标签 | `Hypergraph` + `Hyperedge` |
+| 普通超图网络（不向下封闭） | `HypergraphNetwork` |
+| 单纯复形（子面自动补全、`dimension` / `faces()`） | `SimplicialComplexNetwork` |
+| 分层结构，结点跨层共享 | `MultilayerNetwork` |
+| 事件流，同一组结点可在不同时刻重复出现 | `TemporalNetwork` |
+| 权重 | 上述类的 `W` 变体，或 `add_edge(..., weight=...)` |
+| 有序成员 | `D` / `WD` 变体（成员为有序 `tuple`） |
+
+## API 速查
+
+- 公共 API 全部从顶层 `honet` 导入，无需深层路径；`honet.__all__` 是权威清单。
+- 通用容器：`Hypergraph.add_node` / `add_edge(members, label=None, weight=1.0)` /
+  `remove_node` / `subhypergraph` / `degree` / `neighbors` / `nodes` / `edges` /
+  `node_set` / `num_nodes` / `num_edges` / `edge_sizes` / `is_uniform`。
+- 形态基类共有接口：`nodes` / `edges` / `num_nodes` / `num_edges` / `degree` /
+  `incidence_matrix()` / `len()` / `in`。
+- 度量函数：`incidence_matrix(hg)`、`degree_sequence(hg)`、`clique_projection(hg)`。
+- 表格构造：`Hypergraph.from_dataframe(...)`、
+  `SimplicialComplexNetwork.from_dataframe(...)`、`HypergraphNetwork.from_dataframe(...)`、
+  `MultilayerNetwork.from_dataframe(layer_col=...)`、
+  `TemporalNetwork.from_dataframe(time_col=...)`，均支持 `edge_col` / `node_col` / `weight_col`。
+
+## 常见陷阱
+
+- 非 `W` / `WD` 变体不接受非 1.0 权重，会抛 `TypeError`；需要权重请换 `W` 变体。
+- 无向形态的成员是 `frozenset`，有向是 `tuple`；有向变体拒绝重复成员与自环。
+- `SimplicialComplexNetwork` 只需加入极大面，子面由 `faces()` 展开，不要重复添加。
+- `Hypergraph`（通用容器，可带 `label`）与 `HypergraphNetwork`（类层次中的形态）是两个类型，不能混用。
+- 查询结果均为不可变类型，修改请调用 `add_*` / `remove_*`。
+
+## 链接
+
+- 源码与文档：https://github.com/doctordragon666/honet
+- 用户文档：https://github.com/doctordragon666/honet/blob/main/README.md
+- 变更记录：https://github.com/doctordragon666/honet/blob/main/CHANGELOG.md
+- 许可证：GPL-3.0-or-later

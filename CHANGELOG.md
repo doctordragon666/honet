@@ -30,7 +30,16 @@
 
 ## [Unreleased]
 
-（暂无。下一个版本的改动将在此登记。）
+### Added
+
+- `Hypergraph` 与四种高阶网络（`SimplicialComplexNetwork` / `HypergraphNetwork` /
+  `MultilayerNetwork` / `TemporalNetwork`）新增 `from_dataframe` 类方法：按长表
+  （一行 = 结点属于某条超边 / 单形 / 事件）构造，支持自定义列名与可选权重列；
+  多层与时序额外按 `layer` / `time` 分组，同一标识在不同层、不同时刻互不合并。
+  缺失值、权重冲突、重复超边均给出明确异常。
+- 新增可选依赖 `honet[pandas]`；核心包运行时不 import pandas，仅在类型标注中引用。
+- 新增 `llms.txt` 与 `AGENTS.md`：面向 LLM 与编码代理的机器可读说明（定位、何时使用、
+  安装、最小示例、选型表、API 速查、语义陷阱）；README 增加「给 AI 助手」小节并链接两者。
 
 ## [dev] — `X.Y.Z.devN`（仅 TestPyPI）
 

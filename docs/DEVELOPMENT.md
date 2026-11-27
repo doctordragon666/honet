@@ -13,7 +13,7 @@
 | uv | ≥ 0.10 | `uv --version` |
 
 ```bash
-uv sync          # 安装运行依赖 + dev 组（pytest、ruff）
+uv sync          # 安装运行依赖 + dev 组（pytest、ruff、pandas）
 ```
 
 依赖与打包元数据**只**来自 `pyproject.toml`。不要新增 `requirements.txt`、
@@ -26,6 +26,7 @@ honet/
 ├── src/honet/                  发布到 PyPI 的包
 │   ├── __init__.py             仅导出 + __version__
 │   ├── _types.py               Node / Members 类型别名
+│   ├── _frame.py               DataFrame 长表解析（内部，from_dataframe 共用）
 │   ├── base/
 │   │   ├── network.py          HigherOrderNetwork（抽象基类）
 │   │   └── mixins/             WeightedMixin、DirectedMixin（各一个文件）
@@ -38,6 +39,8 @@ honet/
 ├── tests/                      pytest 测试（不随包分发）
 ├── examples/                   Jupyter notebook（不随包分发）
 ├── docs/                       开发文档（不随包分发）
+├── llms.txt                    LLM 可读的包说明（llmstxt.org 风格）
+├── AGENTS.md                   编码代理使用约定
 └── .github/workflows/          CI / 定时发布
 ```
 

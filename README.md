@@ -70,6 +70,60 @@ hg.add_edge(["alice", "bob"], label="paper-2024")   # 合法：标签不同
 print(hg.num_edges)                                 # 2
 ```
 
+## 从 pandas 表格构造
+
+`Hypergraph` 与四种高阶网络都提供 `from_dataframe` 类方法，接受**长表**
+（一行 = 某个结点属于某条超边 / 单形 / 事件），列名可自定义，可选权重列：
+
+```python
+import pandas as pd
+from honet import Hypergraph, HypergraphNetworkW, SimplicialComplexNetwork
+
+df = pd.DataFrame(
+    {
+        "paper": ["p1", "p1", "p2"],
+        "author": ["a", "b", "a"],
+        "citations": [3, 3, 1],
+    }
+)
+
+Hypergraph.from_dataframe(df, edge_col="paper", node_col="author").num_edges   # 2
+HypergraphNetworkW.from_dataframe(
+    df, edge_col="paper", node_col="author", weight_col="citations"
+)
+SimplicialComplexNetwork.from_dataframe(
+    df, edge_col="paper", node_col="author"
+).num_faces   # 面：{a}、{b}、{a,b}
+```
+
+多层与时序网络多一个身份列，分别按 `layer` / `time` 分组，因此同一超边标识
+在不同层、不同时刻互不合并：
+
+```python
+from honet import MultilayerNetwork, TemporalNetwork
+
+layers = pd.DataFrame(
+    {
+        "layer": ["work", "work", "family"],
+        "edge": ["e1", "e1", "e1"],
+        "node": ["a", "b", "a"],
+    }
+)
+MultilayerNetwork.from_dataframe(layers).layers        # ('work', 'family')
+
+events = pd.DataFrame(
+    {
+        "time": [1, 1, 2, 2],
+        "edge": ["e1", "e1", "e1", "e1"],
+        "node": ["a", "b", "a", "b"],
+    }
+)
+TemporalNetwork.from_dataframe(events).times           # (1.0, 2.0)
+```
+
+同一分组内的权重必须一致，标识/结点为空、权重不是实数或超边重复都会抛出明确异常。
+pandas 不是必需依赖：按需安装 `honet[pandas]`，核心包运行时不 import pandas。
+
 ## API 概览
 
 | 名字                            | 说明                                                                        |
@@ -160,6 +214,17 @@ uv run --with jupyter --with ipykernel jupyter nbconvert \
 | `02_incidence_and_degrees.ipynb`  | 关联矩阵、列和/行和校验、度序列与度分布                          |
 | `03_clique_projection.ipynb`      | 团投影，以及“三元边 vs 三条二元边”投影相同但结构不同的信息损失 |
 | `04_collaboration_scenario.ipynb` | 6 人实验室合作网络小场景：高阶度、加权度与投影来源追溯           |
+
+## 给 AI 助手
+
+仓库提供两份机器可读的使用说明，可直接作为上下文提供给 LLM 或编码代理：
+
+- [`llms.txt`](https://github.com/doctordragon666/honet/blob/main/llms.txt)：包定位、
+  何时该用、安装方式、最小示例、选型表、API 速查与常见陷阱；
+- [`AGENTS.md`](https://github.com/doctordragon666/honet/blob/main/AGENTS.md)：给编码代理
+  的使用约定（选型、构造顺序、必须注意的语义差异）。
+
+两份文件与真实 API 同步维护；改动公共接口时应一并更新，避免 AI 生成不存在的调用。
 
 ## 文档
 

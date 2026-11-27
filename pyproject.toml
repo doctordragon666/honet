@@ -32,6 +32,12 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+# 可选：Hypergraph.from_dataframe 直接接收 pandas DataFrame；核心逻辑不 import pandas
+pandas = [
+    "pandas>=2.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/doctordragon666/honet"
 Repository = "https://github.com/doctordragon666/honet"
@@ -42,6 +48,7 @@ Issues = "https://github.com/doctordragon666/honet/issues"
 [dependency-groups]
 # 开发期依赖：只用于测试与静态检查，不会进入发布到 PyPI 的运行依赖
 dev = [
+    "pandas>=2.0",
     "pytest>=8.3",
     "ruff>=0.9",
 ]

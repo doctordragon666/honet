@@ -15,10 +15,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
+from honet._frame import group_rows
 from honet._types import Members, Node
 from honet.base import HigherOrderNetwork
 from honet.base.mixins import DirectedMixin, WeightedMixin
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class MultilayerNetwork(HigherOrderNetwork):
@@ -50,6 +55,46 @@ class MultilayerNetwork(HigherOrderNetwork):
             self.add_layer(layer)
         for node in nodes:
             self._nodes[node] = None
+
+    @classmethod
+    def from_dataframe(
+        cls,
+        frame: pd.DataFrame,
+        *,
+        edge_col: str = "edge",
+        node_col: str = "node",
+        layer_col: str = "layer",
+        weight_col: str | None = None,
+    ) -> MultilayerNetwork:
+        """由 pandas DataFrame 构造多层网络（长表：一行 = 结点属于某层的一条超边）。
+
+        分组键是 ``(layer_col, edge_col)``，因此同一个超边标识出现在不同层时
+        互不合并；层名非字符串会用 ``str()`` 转换。
+
+        Args:
+            frame: 输入表。
+            edge_col: 超边标识列。
+            node_col: 结点列。
+            layer_col: 层名列。
+            weight_col: 可选权重列，同一层内同一超边的各行必须一致，缺省为 1.0。
+
+        Returns:
+            新的多层网络，层与超边均按首次出现顺序排列。
+
+        Raises:
+            KeyError: 缺少指定列。
+            ValueError: 标识/结点/层为空、同组权重冲突，或同层内超边重复。
+        """
+        graph = cls()
+        groups = group_rows(
+            frame,
+            key_cols=(layer_col, edge_col),
+            node_col=node_col,
+            weight_col=weight_col,
+        )
+        for (layer, _), members, weight, _ in groups:
+            graph.add_edge(members, layer=str(layer), weight=weight)
+        return graph
 
     def add_layer(self, name: str) -> None:
         """注册一个新层（幂等）。

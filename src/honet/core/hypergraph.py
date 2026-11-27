@@ -15,9 +15,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
+from honet._frame import group_rows
 from honet._types import Node
 from honet.core.hyperedge import Hyperedge
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # 内部用于判重的键：(超边成员集合, 标签)
 EdgeKey = tuple[frozenset[Node], str | None]
@@ -70,6 +75,59 @@ class Hypergraph:
         # ---- 第二阶段：导入超边（成员结点按需补建）----
         for members in edges:
             self.add_edge(members)
+
+    # ------------------------------------------------------------------
+    # 从表格数据构造
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def from_dataframe(
+        cls,
+        frame: pd.DataFrame,
+        *,
+        edge_col: str = "edge",
+        node_col: str = "node",
+        weight_col: str | None = None,
+        label_col: str | None = None,
+    ) -> Hypergraph:
+        """由 pandas DataFrame 构造超图（长表：一行表示“某结点属于某条超边”）。
+
+        Args:
+            frame: 输入表，列名通过下面的参数指定。
+            edge_col: 超边标识列，取值相同的行归为同一条超边。
+            node_col: 结点列。
+            weight_col: 可选权重列；同一超边的各行权重必须一致，缺省为 1.0。
+            label_col: 可选标签列；非字符串值用 ``str()`` 转换，缺失视为无标签。
+
+        Returns:
+            新的 :class:`Hypergraph`：超边与结点均按首次出现顺序排列，
+            同一超边内重复出现的结点自动去重。
+
+        Raises:
+            KeyError: DataFrame 缺少指定列。
+            ValueError: 标识或结点为空、权重不是实数、同一超边的权重/标签不一致，
+                或两条不同超边拥有完全相同的成员与标签。
+
+        用法::
+
+            df = pd.DataFrame({
+                "paper": ["p1", "p1", "p2"],
+                "author": ["a", "b", "a"],
+            })
+            hg = Hypergraph.from_dataframe(df, edge_col="paper", node_col="author")
+            hg.num_edges, hg.degree("a")    # (2, 2)
+        """
+        graph = cls()
+        groups = group_rows(
+            frame,
+            key_cols=(edge_col,),
+            node_col=node_col,
+            weight_col=weight_col,
+            label_col=label_col,
+        )
+        for _, members, weight, label in groups:
+            graph.add_edge(members, label=label, weight=weight)
+        return graph
 
     # ------------------------------------------------------------------
     # 构造与修改

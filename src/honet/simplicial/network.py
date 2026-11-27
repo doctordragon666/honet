@@ -14,10 +14,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
+from honet._frame import group_rows
 from honet._types import Members, Node
 from honet.base import HigherOrderNetwork
 from honet.base.mixins import DirectedMixin, WeightedMixin
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class SimplicialComplexNetwork(HigherOrderNetwork):
@@ -53,6 +58,44 @@ class SimplicialComplexNetwork(HigherOrderNetwork):
             self._nodes[node] = None
         for facet in facets:
             self.add_facet(facet)
+
+    @classmethod
+    def from_dataframe(
+        cls,
+        frame: pd.DataFrame,
+        *,
+        edge_col: str = "edge",
+        node_col: str = "node",
+        weight_col: str | None = None,
+    ) -> SimplicialComplexNetwork:
+        """由 pandas DataFrame 构造单纯复形（长表：一行 = 结点属于某个极大单形）。
+
+        ``edge_col`` 取值相同的行合并为一个极大单形；其全部子面仍由
+        :meth:`faces` 按向下封闭规则展开，无需在表中重复罗列。
+
+        Args:
+            frame: 输入表。
+            edge_col: 极大单形的标识列。
+            node_col: 结点列。
+            weight_col: 可选权重列，同一单形内必须一致，缺省为 1.0。
+
+        Returns:
+            新的复形，极大单形按首次出现顺序排列。
+
+        Raises:
+            KeyError: 缺少指定列。
+            ValueError: 标识或结点为空、同组权重冲突、单形重复。
+        """
+        graph = cls()
+        groups = group_rows(
+            frame,
+            key_cols=(edge_col,),
+            node_col=node_col,
+            weight_col=weight_col,
+        )
+        for _, members, weight, _ in groups:
+            graph.add_facet(members, weight=weight)
+        return graph
 
     # ---- 构造 ----
 

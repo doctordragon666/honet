@@ -14,10 +14,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
+from honet._frame import group_rows
 from honet._types import Members, Node
 from honet.base import HigherOrderNetwork
 from honet.base.mixins import DirectedMixin, WeightedMixin
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class TemporalNetwork(HigherOrderNetwork):
@@ -50,6 +55,52 @@ class TemporalNetwork(HigherOrderNetwork):
             self._nodes[node] = None
         for timestamp, members in events:
             self.add_event(members, time=timestamp)
+
+    @classmethod
+    def from_dataframe(
+        cls,
+        frame: pd.DataFrame,
+        *,
+        edge_col: str = "edge",
+        node_col: str = "node",
+        time_col: str = "time",
+        weight_col: str | None = None,
+    ) -> TemporalNetwork:
+        """由 pandas DataFrame 构造时序网络（长表：一行 = 某时刻一条事件中的结点）。
+
+        分组键是 ``(time_col, edge_col)``：同一组结点在不同时刻属于不同事件，
+        这正是时序网络与一次性超图的差别。插入后内部仍按时间升序排列。
+
+        Args:
+            frame: 输入表。
+            edge_col: 事件标识列。
+            node_col: 结点列。
+            time_col: 时间戳列，必须是实数（整数或浮点）。
+            weight_col: 可选权重列，同一事件内必须一致，缺省为 1.0。
+
+        Returns:
+            新的时序网络。
+
+        Raises:
+            KeyError: 缺少指定列。
+            ValueError: 标识/结点/时间为空、时间不是实数、同组权重冲突，
+                或同一时刻出现相同成员的事件。
+        """
+        graph = cls()
+        groups = group_rows(
+            frame,
+            key_cols=(time_col, edge_col),
+            node_col=node_col,
+            weight_col=weight_col,
+        )
+        for (timestamp, _), members, weight, _ in groups:
+            try:
+                time_value = float(timestamp)
+            except (TypeError, ValueError) as exc:
+                message = f"{time_col!r} 不是实数：{timestamp!r}"
+                raise ValueError(message) from exc
+            graph.add_event(members, time=time_value, weight=weight)
+        return graph
 
     @staticmethod
     def _check_time(time: float) -> float:
