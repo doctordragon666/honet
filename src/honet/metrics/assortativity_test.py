@@ -11,7 +11,7 @@ from collections import defaultdict
 from typing import Any
 
 from honet._deps import require
-from honet._hnx import node_degrees
+from honet._topology import topology
 from honet.metrics._reuse import package_function
 
 
@@ -26,8 +26,8 @@ def assortativity_test(H: Any) -> dict[int, float]:
 
     说明:
         余平均度直接复用 :func:`honet.metrics.excess_average_degree`，因此与
-        全局余平均度口径完全一致；旧实现用 ``H.degree(node)`` 逐点求度，
-        2.4.3 已移除该属性，这里改用 :func:`honet._hnx.node_degrees`。
+        全局余平均度口径完全一致；度值取自共享拓扑索引
+        （:mod:`honet._topology`），不再逐点求度。
 
     示例:
         >>> import hypernetx as hnx
@@ -37,7 +37,8 @@ def assortativity_test(H: Any) -> dict[int, float]:
     """
     np = require("numpy")
 
-    degrees = node_degrees(H)
+    # 度取自共享拓扑索引；余平均度复用局部指标（其结果同样带缓存）
+    degrees = topology(H).degrees
     excess = package_function("honet.metrics", "excess_average_degree")(H)
 
     # 1) 按超度分桶收集余平均度
