@@ -37,6 +37,43 @@ dependencies = []
 pandas = [
     "pandas>=2.0",
 ]
+# 分析功能（构建 / 指标 / 社区 / 传播 / 攻击 / 导入导出）的可选依赖。
+# 核心容器（Hypergraph 等）零依赖；只有访问 honet 的分析子包时才需要这些包。
+analysis = [
+    "hypernetx>=2.4.3",
+    "networkx>=3.4",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "scikit-learn>=1.4",
+    "scipy>=1.11",
+    # honet.convert 的 xgi / hypergraphx 互转，以及 honet.metrics 的可约性指标
+    "xgi>=0.9",
+    "hypergraphx>=1.7",
+]
+# 绘图功能（honet.plot）额外需要 matplotlib；honet.io.load_map_data 需要 geopandas。
+viz = [
+    "honet[analysis]",
+    "matplotlib>=3.8",
+    "geopandas>=0.14",
+]
+# 表格读写：honet.export 的 .xlsx 往返需要 openpyxl。
+excel = [
+    "openpyxl>=3.1",
+]
+# 驱动节点控制（honet.control）需要 Hypergraph Analysis Toolbox。
+# 注意：PyPI 上名为 hat 的包是无关的 Theano 工具箱，真正的包名是
+# HypergraphAnalysisToolbox，导入名为 HAT。
+hat = [
+    "honet[analysis]",
+    "HypergraphAnalysisToolbox>=1.1.18",
+]
+# 一次装齐全部可选功能。
+all = [
+    "honet[analysis]",
+    "honet[viz]",
+    "honet[excel]",
+    "honet[hat]",
+]
 
 [project.urls]
 Homepage = "https://github.com/doctordragon666/honet"

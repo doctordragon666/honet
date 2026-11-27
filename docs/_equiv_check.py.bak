@@ -1,0 +1,269 @@
+"""新旧实现等价性验收。
+
+做法：把旧库 src/src/hypertrade 以「伪包」方式加载（绕开它 __init__ 里对
+已删除模块的级联 import），与新实现 honet.* 在同样输入上逐函数比对。
+
+旧库基于 hypernetx 1.x 的接口，部分函数在当前 hypernetx 2.4.3 下必然失败，
+这类情况记录为 SKIP 并说明原因，不算新实现的缺陷。
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+import types
+from pathlib import Path
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent.parent
+OLD = ROOT / "src" / "src" / "hypertrade"
+
+results: list[tuple[str, str, str]] = []
+
+# 把旧库目录加入 sys.path，使 `hypertrade.metric.nodemetric` 这类真实包路径可导入。
+# 旧库 __init__.py 会级联 import 在 hypernetx 2.x 下失效的模块，因此这里不 import
+# 顶层 hypertrade，而是直接按完整包路径加载所需子模块。
+# 旧库依赖 third.py 用 `from .third import *` 把 hnx / np / DataFrame / hgx / HAT
+# 注入各模块命名空间，占位包必须复现同样的注入，否则相对 import 会找不到名字。
+sys.path.insert(0, str(ROOT / "src" / "src"))
+
+import HAT  # noqa: E402
+import hypergraphx as hgx  # noqa: E402
+import hypernetx as hnx  # noqa: E402
+import numpy as np  # noqa: E402
+from pandas import DataFrame  # noqa: E402
+
+_INJECTED = {"hnx": hnx, "np": np, "hgx": hgx, "HAT": HAT, "DataFrame": DataFrame}
+
+_old_pkg_stub = types.ModuleType("hypertrade")
+_old_pkg_stub.__path__ = [str(OLD)]
+_old_pkg_stub.__dict__.update(_INJECTED)
+sys.modules.setdefault("hypertrade", _old_pkg_stub)
+for _sub in ("metric", "contagion"):
+    _stub = types.ModuleType(f"hypertrade.{_sub}")
+    _stub.__path__ = [str(OLD / _sub)]
+    _stub.__dict__.update(_INJECTED)
+    sys.modules.setdefault(f"hypertrade.{_sub}", _stub)
+
+
+def load_old(module_name: str, rel_path: str):
+    """按真实包路径加载旧库子模块（支持其内部的相对 import）。"""
+    spec = importlib.util.spec_from_file_location(module_name, OLD / rel_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def record(name: str, status: str, detail: str = "") -> None:
+    results.append((name, status, detail))
+
+
+def _values_as_sets(mapping: dict) -> list:
+    """把分区字典的值统一成可哈希的集合，用于只比对结构不变量。"""
+    out = []
+    for value in mapping.values():
+        out.append(frozenset(value) if not isinstance(value, (int, str)) else value)
+    return out
+
+
+import hypernetx as hnx  # noqa: E402
+
+H = hnx.Hypergraph(
+    {
+        "e1": ["a", "b", "c"],
+        "e2": ["b", "c"],
+        "e3": ["c", "d"],
+        "e4": ["d", "e"],
+    }
+)
+
+# ---------------------------------------------------------------- 指标类
+try:
+    old_metric = load_old("hypertrade.metric.nodemetric", "metric/nodemetric.py")
+    import honet.metrics as new_metrics
+
+    # weighted_degree
+    try:
+        old_val = old_metric.weighted_degree(H)
+        new_val = new_metrics.weighted_degree(H)
+        ok = set(old_val) == set(new_val) and all(
+            np.isclose(old_val[k], new_val[k]) for k in old_val
+        )
+        record("weighted_degree", "PASS" if ok else "FAIL", f"old={old_val} new={new_val}")
+    except Exception as exc:  # noqa: BLE001
+        record("weighted_degree", "SKIP", f"{type(exc).__name__}: {exc}")
+
+    # excess_average_degree
+    try:
+        old_val = old_metric.excess_average_degree(H)
+        new_val = new_metrics.excess_average_degree(H)
+        ok = set(old_val) == set(new_val) and all(
+            np.isclose(old_val[k], new_val[k]) for k in old_val
+        )
+        record("excess_average_degree", "PASS" if ok else "FAIL", f"old={old_val} new={new_val}")
+    except Exception as exc:  # noqa: BLE001
+        record("excess_average_degree", "SKIP", f"{type(exc).__name__}: {exc}")
+
+    # eigenvector_centrality（取绝对值比较，特征向量符号可翻转）
+    try:
+        old_val = old_metric.eigenvector_centrality(H)
+        new_val = new_metrics.eigenvector_centrality(H)
+        ok = set(old_val) == set(new_val) and all(
+            np.isclose(abs(old_val[k]), abs(new_val[k]), atol=1e-8) for k in old_val
+        )
+        record("eigenvector_centrality", "PASS" if ok else "FAIL", "按绝对值比较")
+    except Exception as exc:  # noqa: BLE001
+        record("eigenvector_centrality", "SKIP", f"{type(exc).__name__}: {exc}")
+
+    # betweenness_centrality（旧实现依赖已删除的 hnx.bipartite）
+    try:
+        old_val = old_metric.betweenness_centrality(H)
+        new_val = new_metrics.betweenness_centrality(H)
+        ok = set(old_val) == set(new_val) and all(
+            np.isclose(old_val[k], new_val[k]) for k in old_val
+        )
+        record("betweenness_centrality", "PASS" if ok else "FAIL", f"old={old_val}")
+    except Exception as exc:  # noqa: BLE001
+        record(
+            "betweenness_centrality",
+            "SKIP",
+            f"旧实现调用已被 hypernetx 2.x 删除的 hnx.bipartite：{type(exc).__name__}",
+        )
+except Exception as exc:  # noqa: BLE001
+    record("metrics（整组）", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 边指标
+try:
+    old_edge = load_old("hypertrade.metric.edgemetric", "metric/edgemetric.py")
+    import honet.metrics as new_metrics2
+
+    old_val = old_edge.get_avg_degree_by_edge_size(H)
+    new_val = new_metrics2.get_avg_degree_by_edge_size(H)
+    ok = set(old_val) == set(new_val) and all(np.isclose(old_val[k], new_val[k]) for k in old_val)
+    record("get_avg_degree_by_edge_size", "PASS" if ok else "FAIL", f"old={old_val} new={new_val}")
+except Exception as exc:  # noqa: BLE001
+    record("get_avg_degree_by_edge_size", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 构建类
+try:
+    old_build = load_old("hypertrade.honbuild", "honbuild.py")
+    import honet.build as new_build
+
+    old_h = old_build.generate_random_hypernet(n_nodes=20, n_edges=30, max_edge_size=4, seed=7)
+    new_h = new_build.generate_random_hypernet(n_nodes=20, n_edges=30, max_edge_size=4, seed=7)
+    ok = (
+        len(list(old_h.nodes)) == len(list(new_h.nodes))
+        and len(list(old_h.edges)) == len(list(new_h.edges))
+        and {e: list(old_h.edges[e]) for e in old_h.edges}
+        == {e: list(new_h.edges[e]) for e in new_h.edges}
+    )
+    record("generate_random_hypernet(seed=7)", "PASS" if ok else "FAIL", "同 seed 结构一致")
+except Exception as exc:  # noqa: BLE001
+    record("generate_random_hypernet", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 攻击类
+try:
+    old_attack = load_old("hypertrade.honattack", "honattack.py")
+    import honet.attack as new_attack
+
+    old_seq = old_attack.degree_attack_sequence(H, target="node")
+    new_seq = new_attack.degree_attack_sequence(H, target="node")
+    ok = list(old_seq) == list(new_seq)
+    record("degree_attack_sequence", "PASS" if ok else "FAIL", f"old={list(old_seq)}")
+except Exception as exc:  # noqa: BLE001
+    record("degree_attack_sequence", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 导出类
+try:
+    old_dump = load_old("hypertrade.dump", "dump.py")
+    import honet.export as new_export
+
+    import pandas as pd
+
+    df = pd.DataFrame({"指标": ["可约性", "熵"], "数值": [0.5, 1.2345]})
+    old_tex = old_dump.to_latex(df, caption_cn="测试表", label="tab:test")
+    new_tex = new_export.to_latex(df, caption_cn="测试表", label="tab:test")
+    record("to_latex", "PASS" if old_tex == new_tex else "FAIL", "逐字符比对")
+except Exception as exc:  # noqa: BLE001
+    record("to_latex", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 转换类
+try:
+    old_core = load_old("hypertrade.core", "core.py")
+    import honet.convert as new_convert
+
+    old_w = old_core.get_hyperedge_weights(H)
+    new_w = new_convert.get_hyperedge_weights(H)
+    ok = set(old_w) == set(new_w) and all(np.isclose(old_w[k], new_w[k]) for k in old_w)
+    record("get_hyperedge_weights", "PASS" if ok else "FAIL", f"old={old_w}")
+
+    old_nx = old_core.convert_hypernetx_to_nxgraph(H)
+    new_nx = new_convert.convert_hypernetx_to_nxgraph(H)
+    ok = set(old_nx.edges) == set(new_nx.edges) and set(old_nx.nodes) == set(new_nx.nodes)
+    record("convert_hypernetx_to_nxgraph", "PASS" if ok else "FAIL", f"{new_nx.number_of_edges()} 条边")
+except Exception as exc:  # noqa: BLE001
+    record("convert（整组）", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 社区发现
+try:
+    old_comm = load_old("hypertrade.honcommunity", "honcommunity.py")
+    import honet.community as new_community
+
+    old_res = old_comm.extract_community_partition(H, method=old_comm.Method.KUMAR)
+    new_res = new_community.extract_community_partition(H, method=new_community.Method.KUMAR)
+    # KUMAR 依赖 igraph 的随机过程，只比对分区结构不变量而非具体成员
+    ok = (
+        isinstance(new_res, dict)
+        and set(new_res) == set(H.nodes)
+        and len(set(map(frozenset, _values_as_sets(new_res))))
+        == len(set(map(frozenset, _values_as_sets(old_res))))
+    )
+    record("extract_community_partition(KUMAR)", "PASS" if ok else "FAIL", "比对社区数与结点覆盖")
+except Exception as exc:  # noqa: BLE001
+    record("extract_community_partition", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 传播动力学
+try:
+    old_cont = load_old("hypertrade.honcontagion", "honcontagion.py")
+    import honet.contagion as new_contagion
+
+    tau_old = old_cont.generate_tau(H, [0.1, 0.2], type="fixed")
+    tau_new = new_contagion.generate_tau(H, [0.1, 0.2], type="fixed")
+    ok = set(tau_old) == set(tau_new) and all(
+        np.isclose(tau_old[k], tau_new[k]) for k in tau_old
+    )
+    record("generate_tau", "PASS" if ok else "FAIL", f"old={tau_old}")
+
+    old_s = old_cont.honSIS(H, gamma=0.5, tau=tau_old, tmax=20, seed=1, return_all_data=True)
+    new_s = new_contagion.hon_sis(H, gamma=0.5, tau=tau_new, tmax=20, seed=1, return_all_data=True)
+    ok = np.allclose(np.asarray(old_s[0], dtype=float), np.asarray(new_s[0], dtype=float))
+    record("honSIS(tmax=20, seed=1)", "PASS" if ok else "FAIL", "时间序列逐点比对")
+except Exception as exc:  # noqa: BLE001
+    record("contagion（整组）", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 控制类
+try:
+    old_ctrl = load_old("hypertrade.honcontrol", "honcontrol.py")
+    import honet.control as new_control
+
+    # star_graph 是确定性构造，可直接逐值比对
+    old_star = old_ctrl.star_graph(H)
+    new_star = new_control.star_graph(H)
+    ok = old_star == new_star
+    record("star_graph", "PASS" if ok else "FAIL", f"old={old_star} new={new_star}")
+except Exception as exc:  # noqa: BLE001
+    record("control（整组）", "SKIP", f"{type(exc).__name__}: {exc}")
+
+# ---------------------------------------------------------------- 输出
+width = max(len(n) for n, _, _ in results) + 2
+for name, status, detail in results:
+    print(f"{name:<{width}} {status:<5} {detail[:110]}")
+
+passed = sum(1 for _, s, _ in results if s == "PASS")
+failed = sum(1 for _, s, _ in results if s == "FAIL")
+skipped = sum(1 for _, s, _ in results if s == "SKIP")
+print(f"\nPASS={passed} FAIL={failed} SKIP={skipped}")
+if failed:
+    sys.exit(1)

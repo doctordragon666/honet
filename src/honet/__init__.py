@@ -104,6 +104,21 @@ except PackageNotFoundError:  # pragma: no cover - 仅在未安装的裸源码�
     # 兜底值：表明“元数据不可用”，避免 import 直接失败；构建/安装后不会是此值
     __version__ = "0.0.0+unknown"
 
+# 分析子包：每个子包内部用 PEP 562 惰性导出，这里只登记名字，
+# 因此 ``import honet`` 依旧不会拉入 numpy / pandas / hypernetx 等可选依赖。
+_ANALYSIS_SUBPACKAGES = (
+    "attack",
+    "build",
+    "community",
+    "contagion",
+    "control",
+    "convert",
+    "export",
+    "io",
+    "metrics",
+    "plot",
+)
+
 # 公开 API 白名单：``from honet import *`` 只会导入这里列出的名字
 __all__ = [
     "DirectedMixin",
@@ -132,4 +147,26 @@ __all__ = [
     "clique_projection",
     "degree_sequence",
     "incidence_matrix",
+    *_ANALYSIS_SUBPACKAGES,
 ]
+
+
+def __getattr__(name: str):
+    """惰性加载分析子包（PEP 562）。
+
+    访问 ``honet.metrics`` 这类子包属性时才真正 import 它，使 ``import honet``
+    保持零第三方依赖。
+    """
+    if name in _ANALYSIS_SUBPACKAGES:
+        import importlib
+
+        module = importlib.import_module(f"{__name__}.{name}")
+        globals()[name] = module
+        return module
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
+
+
+def __dir__() -> list[str]:
+    """让 ``dir(honet)`` 包含惰性登记的分析子包名。"""
+    return sorted(set(globals()) | set(_ANALYSIS_SUBPACKAGES))

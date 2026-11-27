@@ -1,7 +1,9 @@
 # 依赖与构建产物
-dist/
-build/
-wheels/
+# 注意：必须锚定到仓库根目录。写成裸的 build/ 会连带忽略 src/honet/build/
+# 这个真实子包，导致源码无法提交。
+/dist/
+/build/
+/wheels/
 *.egg-info/
 .eggs/
 

@@ -24,9 +24,12 @@ uv sync          # 安装运行依赖 + dev 组（pytest、ruff、pandas）
 ```
 honet/
 ├── src/honet/                  发布到 PyPI 的包
-│   ├── __init__.py             仅导出 + __version__
+│   ├── __init__.py             仅导出 + __version__（分析子包惰性挂载）
 │   ├── _types.py               Node / Members 类型别名
 │   ├── _frame.py               DataFrame 长表解析（内部，from_dataframe 共用）
+│   ├── _lazy.py                PEP 562 惰性导出机制（分析子包共用）
+│   ├── _deps.py                可选依赖导入 + 安装提示
+│   ├── _hnx.py                 hypernetx 1.x / 2.x 兼容层
 │   ├── base/
 │   │   ├── network.py          HigherOrderNetwork（抽象基类）
 │   │   └── mixins/             WeightedMixin、DirectedMixin（各一个文件）
@@ -35,7 +38,9 @@ honet/
 │   ├── hypergraph/network.py   超图基类 + W/D/WD
 │   ├── multilayer/network.py   多层基类 + W/D/WD
 │   ├── temporal/network.py     时序基类 + W/D/WD
-│   └── utils/                  每个度量函数一个模块
+│   ├── utils/                  每个度量函数一个模块
+│   └── {io,convert,build,metrics,community,contagion,attack,control,plot,export}/
+│                               分析子包（每个子包一个文件一个函数 + 惰性 __init__）
 ├── tests/                      pytest 测试（不随包分发）
 ├── examples/                   Jupyter notebook（不随包分发）
 ├── docs/                       开发文档（不随包分发）
@@ -44,6 +49,8 @@ honet/
 └── .github/workflows/          CI / 定时发布
 ```
 
+分层架构见 [ARCHITECTURE.md](ARCHITECTURE.md)（含架构图）。
+
 代码组织约定：
 
 1. **一个文件只放一个类或一个函数**；子包的 `__init__.py` 只做 re-export；
@@ -51,7 +58,14 @@ honet/
    不允许反向导入，出现互相依赖时用 `TYPE_CHECKING` 或下沉到 `_types`；
 3. 四种形态各有一个子包，子包内只有一个 `network.py`，变体与基类同文件；
 4. 公开 API 只由顶层 `honet/__init__.py` 的 `__all__` 维护，新增名字必须同步加进去，
-   并补测试（`tests/test_package.py` 会校验可导入性与版本一致性）。
+   并补测试（`tests/test_package.py` 会校验可导入性与版本一致性）；
+5. **分析子包不得引入硬依赖**：`dependencies` 保持为空，第三方包一律通过
+   `honet._deps.require()` 获取，子包用 `honet._lazy` 惰性导出；
+6. 访问 hypernetx 时优先用 `honet._hnx` 的兼容函数，不要直接用 1.x 已删除的接口。
+
+> 历史：分析子包由旧库 `hypertrade`（原 `src/src/`）全量迁入，旧目录已删除。
+> 新旧等价性核查脚本归档在 `docs/_equiv_check.py.bak`，需要复核时可临时恢复
+> 旧库后运行。
 
 ## 2. 日常命令
 

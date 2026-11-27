@@ -40,6 +40,31 @@
 - 新增可选依赖 `honet[pandas]`；核心包运行时不 import pandas，仅在类型标注中引用。
 - 新增 `llms.txt` 与 `AGENTS.md`：面向 LLM 与编码代理的机器可读说明（定位、何时使用、
   安装、最小示例、选型表、API 速查、语义陷阱）；README 增加「给 AI 助手」小节并链接两者。
+- **新增 10 个分析子包**（由旧库 `hypertrade` 全量迁入，功能不减，旧目录已删除）：
+  `io`（数据加载与合并）、`convert`（hypernetx / xgi / hypergraphx / NetworkX / HAT 互转）、
+  `build`（随机 / 无标度 / 聚类 / 小世界超图生成）、`metrics`（结点 / 超边 / 全局指标，
+  含可约性、熵、同配性）、`community`（6 种社区发现方法）、`contagion`（SIS / SIR
+  离散、随机、Gillespie 与相图）、`attack`（攻击鲁棒性）、`control`（驱动节点控制）、
+  `plot`（曲线 / 社区 / 地图 / 攻击结果绘图）、`export`（LaTeX / CSV / Excel 导出），
+  共 107 个导出符号。
+- 新增 `docs/ARCHITECTURE.md` 与架构图（`docs/architecture.svg` / `.png`），
+  说明「核心层 → 适配层 → 分析层」的单向依赖关系。
+- 新增可选依赖组 `honet[analysis]`、`honet[viz]`、`honet[excel]`、`honet[hat]`、`honet[all]`。
+
+### Changed
+
+- **核心层保持零第三方依赖**：分析子包通过新增的 `honet._lazy`（PEP 562 惰性导出）
+  按需加载，`import honet` 不会引入 numpy / pandas / hypernetx 等包；缺依赖时只在
+  真正访问对应功能时抛出带 `honet[extra]` 安装提示的 `ImportError`。
+- 新增 `honet._hnx` 兼容层，隔离 hypernetx 1.x 与 2.x 的接口差异（2.x 移除了
+  `H.nodes.degree`、`H.edges.members()`、`H.edges.size`、`hnx.bipartite()` 等）。
+- 旧库的驼峰命名（如 `honSIS` / `RandomDiscrete_SIS` / `extract_community_partition`
+  的 `Method` 枚举值）保留为别名，指向同一个 snake_case 实现，便于旧代码平滑迁移。
+
+### Fixed
+
+- `.gitignore` 的 `build/` 规则改为锚定根目录的 `/build/`，避免连带忽略
+  `src/honet/build/` 子包导致源码无法提交。
 
 ## [dev] — `X.Y.Z.devN`（仅 TestPyPI）
 
