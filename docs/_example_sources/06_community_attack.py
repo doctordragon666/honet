@@ -84,7 +84,8 @@ print("返回类型:", type(partition).__name__)
 print("键:", list(partition.keys()))
 print(f"\nq_h = {partition['qh']:.6f}")
 print("社区:", [sorted(c) for c in partition["communities"]])
-print("结点 -> 社区编号:", partition["nodemap"])
+# 字典的插入顺序来自 set 迭代，跨进程不稳定；打印前按结点名排序
+print("结点 -> 社区编号:", dict(sorted(partition["nodemap"].items())))
 
 # %% [markdown]
 # `only_qh=True` 只返回模块度，批量比较时更省事：
@@ -101,10 +102,26 @@ print("类型:", type(qh).__name__)
 # 这在"不知道哪个方法适合我的数据"时很有用。
 
 # %%
-comparison = honet.community.compare_methods(H)
-print("对比结果:")
+# 只比较确定性方法：Method.Random 内部用随机划分且 compare_methods
+# 不暴露 seed 参数，同一份数据两次跑会得到不同分数，不适合放进示例。
+DETERMINISTIC = [
+    honet.community.Method.KUMAR,
+    honet.community.Method.NMF,
+    honet.community.Method.RECURSIVE,
+    honet.community.Method.Hierarchy,
+]
+comparison = honet.community.compare_methods(H, methods=DETERMINISTIC)
+print("对比结果（只含确定性方法）:")
 for method, value in comparison.items():
     print(f"  {method}: {value}")
+
+# 四个方法得分完全相同，说明它们在这张图上找到了同一个划分。
+# 这本身是有信息量的：当社区结构非常清晰时，不同算法会收敛到同一答案；
+# 反过来，如果它们分歧很大，就说明社区边界模糊、结论不稳。
+scores = [round(v, 12) for v in comparison.values() if v is not None]
+all_same = len(set(scores)) <= 1
+print(f"\n四个方法得分是否完全一致: {all_same}")
+print("一致 -> 社区结构清晰，结论稳健；分歧 -> 边界模糊，需谨慎解读")
 
 # %% [markdown]
 # ## 4. 攻击策略：删谁最致命

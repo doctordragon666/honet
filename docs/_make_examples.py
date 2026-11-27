@@ -18,6 +18,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import pathlib
 import sys
 import textwrap
@@ -77,7 +78,11 @@ def parse_source(path: pathlib.Path) -> list[tuple[str, str]]:
 
 
 def build_notebook(name: str, cells: list[tuple[str, str]]) -> nbformat.NotebookNode:
-    """组装 notebook 节点。"""
+    """组装 notebook 节点。
+
+    cell 的 ``id`` 用「序号 + 内容」的哈希派生，而不是让 nbformat 随机生成。
+    否则每次重新生成都会换一批 id，git 里表现为全文件重写，看不出真实改动。
+    """
     nb = nbformat.v4.new_notebook()
     nb.metadata.update(
         {
@@ -89,12 +94,49 @@ def build_notebook(name: str, cells: list[tuple[str, str]]) -> nbformat.Notebook
             "language_info": {"name": "python"},
         }
     )
-    for kind, source in cells:
+    for index, (kind, source) in enumerate(cells):
+        digest = hashlib.sha1(f"{name}:{index}:{kind}:{source}".encode()).hexdigest()
+        cell_id = digest[:8]
         if kind == "markdown":
-            nb.cells.append(nbformat.v4.new_markdown_cell(source))
+            cell = nbformat.v4.new_markdown_cell(source)
         else:
-            nb.cells.append(nbformat.v4.new_code_cell(source))
+            cell = nbformat.v4.new_code_cell(source)
+        cell["id"] = cell_id
+        nb.cells.append(cell)
     return nb
+
+
+def _merge_stream_outputs(cell: nbformat.NotebookNode) -> None:
+    """把 cell 内连续的同类 stream 输出合并成一段。
+
+    nbclient 写入输出时，同一段 ``print`` 可能因为内核缓冲被切成多个
+    ``stream`` 块（例如 ``['abc']`` 与 ``['abc\\n', 'def\\n']``）。切法取决于
+    执行时机，于是同样的代码两次生成会得到字节不同的 notebook。
+    合并后输出内容不变，但字节稳定。
+    """
+    outputs = cell.get("outputs")
+    if not outputs:
+        return
+
+    merged: list[nbformat.NotebookNode] = []
+    for output in outputs:
+        previous = merged[-1] if merged else None
+        same_stream = (
+            previous is not None
+            and output.get("output_type") == "stream"
+            and previous.get("output_type") == "stream"
+            and previous.get("name") == output.get("name")
+        )
+        if not same_stream:
+            merged.append(output)
+            continue
+        prev_text = previous["text"]
+        cur_text = output["text"]
+        prev_joined = "".join(prev_text) if isinstance(prev_text, list) else prev_text
+        cur_joined = "".join(cur_text) if isinstance(cur_text, list) else cur_text
+        previous["text"] = prev_joined + cur_joined
+
+    cell["outputs"] = merged
 
 
 def generate(number: str, *, timeout: int = 600) -> pathlib.Path:
@@ -119,6 +161,17 @@ def generate(number: str, *, timeout: int = 600) -> pathlib.Path:
         allow_errors=False,
     )
     client.execute()
+
+    # nbclient 会给每个 code cell 写 metadata.execution（含真实时间戳）。
+    # 时间戳对读者没有价值，却让「同内容重新生成」产生字节差异，
+    # git 里看不出真实改动。这里统一剥掉。
+    #
+    # 同时把同一 cell 内**连续的 stdout 片段合并**：nbclient 何时切段取决于
+    # 内核缓冲时机，同样的输出可能被切成 1 段或 2 段，导致字节不一致。
+    for cell in nb.cells:
+        metadata = cell.get("metadata", {})
+        metadata.pop("execution", None)
+        _merge_stream_outputs(cell)
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     target = OUTPUT_DIR / f"{source.stem}.ipynb"

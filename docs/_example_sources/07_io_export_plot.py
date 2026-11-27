@@ -27,7 +27,8 @@ plt.rcParams["axes.unicode_minus"] = False
 
 # 所有临时文件都放这里，notebook 结束时自动清理
 WORKDIR = Path(tempfile.mkdtemp(prefix="honet_io_demo_"))
-print("临时目录:", WORKDIR)
+# 不打印完整路径：mkdtemp 会加随机后缀，每次生成都不同，notebook 就不可复现
+print("临时目录已创建（系统临时目录下，前缀 honet_io_demo_）")
 
 # %% [markdown]
 # ## 1. 读表：`honet.io`
@@ -102,7 +103,10 @@ print("  e 形状:", e_loaded.shape, "| w 形状:", w_loaded.shape)
 try:
     honet.io.load_edge_data(WORKDIR / "does_not_exist.csv")
 except FileNotFoundError as exc:
-    print("如期抛出 FileNotFoundError:", exc)
+    # 异常消息里含完整路径，而临时目录名带随机后缀；只打印类型与文件名，
+    # 保证 notebook 可复现。
+    print("如期抛出:", type(exc).__name__)
+    print("异常消息以「超边数据文件不存在：」开头:", str(exc).startswith("超边数据文件不存在"))
 
 # %% [markdown]
 # ## 2. 导出：`honet.export`
@@ -135,8 +139,8 @@ print(latex)
 # %%
 for ext in ("csv", "excel"):
     out = honet.export.beautify_global_metrics(metrics_df, WORKDIR / "metrics", ext=ext)
-    size = Path(out).stat().st_size
-    print(f"ext={ext:5s} -> {Path(out).name} ({size} 字节)")
+    # 只打印文件名，不打印字节数：xlsx 内部含写入时间戳，大小每次略有浮动
+    print(f"ext={ext:5s} -> {Path(out).name}")
 
 # %% [markdown]
 # 读回来验证往返一致：
@@ -243,7 +247,7 @@ print(computed.to_string(index=False))
 # 2) 存：写成 CSV 和 LaTeX
 saved = honet.export.beautify_global_metrics(computed, WORKDIR / "final", ext="csv")
 tex = honet.export.to_latex(computed, caption_cn="全局指标")
-print(f"\n2) 已存: {Path(saved).name}（{Path(saved).stat().st_size} 字节）")
+print(f"\n2) 已存: {Path(saved).name}")
 print(f"   LaTeX 长度: {len(tex)} 字符")
 
 # 3) 读回并校验
@@ -278,4 +282,4 @@ print(f"\n3) 读回校验: 数值一致 = {same}")
 # %%
 # 清理临时目录（notebook 里演示用；真实项目别随手删数据）
 shutil.rmtree(WORKDIR, ignore_errors=True)
-print("已清理临时目录:", WORKDIR)
+print("已清理临时目录")
