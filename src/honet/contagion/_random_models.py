@@ -85,7 +85,7 @@ def simulate_random_discrete(
     tau: dict[int, float],
     gamma: float,
     *,
-    model: str = "SIS",
+    model: str | CompartmentModel = "SIS",
     sigma1: float = 0.1,
     sigma2: float = 0.1,
     rho: float | None = 0.1,
@@ -102,7 +102,7 @@ def simulate_random_discrete(
         H: hypernetx 超图对象。
         tau: ``{超边大小: 感染率}``，只用于取平均值 ``beta``。
         gamma: 恢复率。
-        model: ``"SIS"`` 或 ``"SIR"``。
+        model: 模型名或 :class:`~honet.contagion._model.CompartmentModel` 规格。
         sigma1: 感染率噪声强度。
         sigma2: 恢复率噪声强度。
         rho: 初始感染比例。
@@ -163,7 +163,7 @@ def simulate_random_gillespie(
     tau: dict[int, float],
     gamma: float,
     *,
-    model: str = "SIS",
+    model: str | CompartmentModel = "SIS",
     sigma1: float = 0.1,
     sigma2: float = 0.1,
     rho: float | None = 0.1,
@@ -181,7 +181,7 @@ def simulate_random_gillespie(
         H: hypernetx 超图对象。
         tau: ``{超边大小: 感染率}``，只用于取平均值 ``beta``。
         gamma: 恢复率。
-        model: ``"SIS"`` 或 ``"SIR"``。
+        model: 模型名或 :class:`~honet.contagion._model.CompartmentModel` 规格。
         sigma1: 感染率噪声强度。
         sigma2: 恢复率噪声强度。
         rho: 初始感染比例。

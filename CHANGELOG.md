@@ -53,6 +53,21 @@
 
 ### Changed
 
+- **传播模型改为规格驱动，新增模型无需改引擎**（详见 `docs/CONTAGION.md`）
+  - 新增 `honet.contagion._model.CompartmentModel`：用声明式规格描述仓室、
+    传染态与状态转移图，替代原先散落各处的 `is_sir` 布尔分叉
+    （`_discrete.py` 9 处、`_random_models.py` 7 处）。
+  - 新增 `simulate` 统一入口；`hon_sis` / `hon_sir` 收敛为薄封装，消除了两者
+    之间 95% 的重复代码，行为与旧签名保持不变。
+  - 内置模型扩展到 `SIS` / `SIR` / `SIRS` / `SIER` / `SEIR` / `SI`；
+    通过 `register_model` 可注册任意自定义仓室模型（测试用五仓室 `SIQD` 验证）。
+  - 状态名开放：除惯例的 S/E/I/R 外，允许 D（接种）、Q（隔离）、V（疫苗）等。
+  - `is_sir_like` 改用可达性分析：SIRS 的 R 经 R→S 仍可回到易感，故判为循环型
+    而非吸收型。
+  - 新增显式随机源 `rng` 参数（借鉴 EoN 的 `fast_SIR(..., rng=...)`）：
+    可并行/嵌套运行互不干扰的模拟，且不污染全局随机状态。
+  - 数值兼容性：重构前后在 SIS/SIR 上做逐位对照，48 组（6 配置 × 4 seed ×
+    2 tmax）全部完全一致。
 - **核心层保持零第三方依赖**：分析子包通过新增的 `honet._lazy`（PEP 562 惰性导出）
   按需加载，`import honet` 不会引入 numpy / pandas / hypernetx 等包；缺依赖时只在
   真正访问对应功能时抛出带 `honet[extra]` 安装提示的 `ImportError`。
