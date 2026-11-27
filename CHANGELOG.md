@@ -33,11 +33,13 @@
 ### Added
 
 - **重写 `examples/`，按用途分为两部分**
-  - 第一部分：5 个 API 示例 notebook（`01_hypergraph_basics` / `02_metrics` /
-    `03_generators_convert` / `04_contagion` / `05_control`），每个覆盖一个子包。
+  - 第一部分：7 个 API 示例 notebook（`01_hypergraph_basics` / `02_metrics` /
+    `03_generators_convert` / `04_contagion` / `05_control` / `06_community_attack` /
+    `07_io_export_plot`），覆盖全部 9 个子包（`community` 与 `attack` 合为 06，
+    `io` / `export` / `plot` 合为 07）。
     全部输出为**真实执行结果**，由 `docs/_make_examples.py` 从
     `docs/_example_sources/*.py` 生成（`allow_errors=False`，任一 cell 报错即中断）。
-  - 第二部分：`06_case_study_collaboration.py` 端到端综合实例，用 13 人协作网络
+  - 第二部分：`08_case_study_collaboration.py` 端到端综合实例，用 13 人协作网络
     演示「构造 → 拓扑画像 → 高阶指标 → 传播风险 → 控制入口 → 综合结论」六步，
     带详细中间注释与结构自检。
   - `examples/README.md` 说明两部分结构与重新生成方式，并集中记录两个最易踩的坑

@@ -24,7 +24,7 @@
 
 运行::
 
-    python examples/06_case_study_collaboration.py
+    python examples/08_case_study_collaboration.py
 """
 
 from __future__ import annotations
@@ -387,7 +387,7 @@ if HAS_PLOT:
     fig.suptitle("13 人协作网络：四个视角的结点重要性", fontsize=12)
     plt.tight_layout()
 
-    output = "examples/06_case_study_result.png"
+    output = "examples/08_case_study_result.png"
     fig.savefig(output, dpi=120, bbox_inches="tight")
     plt.close(fig)
     print(f"图已保存: {output}")

@@ -1,17 +1,19 @@
 # honet 示例
 
-本目录按**用途**分成两部分：想快速查某个 API 怎么用，看第一部分；想看一个完整
-分析流程怎么走，看第二部分。
+本目录按**用途**分成两部分：想查某个 API 怎么用，看第一部分；想看一个完整分析
+流程怎么走，看第二部分。
 
 ```
 examples/
-├── 01_hypergraph_basics.ipynb       ← 第一部分：单 API 演示（notebook）
-├── 02_metrics.ipynb
-├── 03_generators_convert.ipynb
-├── 04_contagion.ipynb
-├── 05_control.ipynb
-├── 06_case_study_collaboration.py   ← 第二部分：综合实例（脚本）
-└── 06_case_study_result.png
+├── 01_hypergraph_basics.ipynb       ┐
+├── 02_metrics.ipynb                 │
+├── 03_generators_convert.ipynb      │ 第一部分：单 API 演示（notebook）
+├── 04_contagion.ipynb               │
+├── 05_control.ipynb                 │
+├── 06_community_attack.ipynb        │
+├── 07_io_export_plot.ipynb          ┘
+├── 08_case_study_collaboration.py   ← 第二部分：综合实例（脚本）
+└── 08_case_study_result.png
 ```
 
 ---
@@ -23,22 +25,24 @@ examples/
 
 | Notebook | 覆盖内容 | 关键 API |
 | --- | --- | --- |
-| [`01_hypergraph_basics.ipynb`](01_hypergraph_basics.ipynb) | 构造超图、关联矩阵、高阶度、团投影 | `Hypergraph` / `Hyperedge` / `incidence_matrix` / `degree_sequence` / `clique_projection` |
-| [`02_metrics.ipynb`](02_metrics.ipynb) | 9 个结构指标 | `honet.metrics.*`（`calc_entropy` / `calc_reducibility` / `calc_natural_connectivity` / …） |
-| [`03_generators_convert.ipynb`](03_generators_convert.ipynb) | 随机超图生成、格式互转 | `honet.build.*` / `honet.convert.*` |
+| [`01_hypergraph_basics.ipynb`](01_hypergraph_basics.ipynb) | 构造超图、关联矩阵、高阶度、团投影、四种网络形态 | `Hypergraph` / `Hyperedge` / `incidence_matrix` / `degree_sequence` / `clique_projection` |
+| [`02_metrics.ipynb`](02_metrics.ipynb) | 9 个结构指标 | `calc_entropy` / `calc_reducibility` / `calc_natural_connectivity` / `betweenness_centrality` / … |
+| [`03_generators_convert.ipynb`](03_generators_convert.ipynb) | 随机超图生成、格式互转 | `build.*` / `convert.*` |
 | [`04_contagion.ipynb`](04_contagion.ipynb) | SIS/SIR 传播、阈值、相图 | `random_discrete_sis` / `simulate` / `sis_phase` / `generate_tau` |
 | [`05_control.ipynb`](05_control.ipynb) | 可控性、最优控制、牵制选择 | `hypergraph_laplacian` / `minimum_energy_control` / `average_controllability` / `rank_simplices` |
+| [`06_community_attack.ipynb`](06_community_attack.ipynb) | 社区发现、攻击鲁棒性 | `basic_method` / `extract_community_partition` / `execute_attack` / `degree_attack_sequence` |
+| [`07_io_export_plot.ipynb`](07_io_export_plot.ipynb) | 读写、导出、绘图 | `io.*` / `export.*` / `plot.*` |
 
-### ⚠️ 最容易踩的两个坑
+### ⚠️ 最容易踩的坑
 
-这两个坑在 notebook 里都有专门演示，但值得在这里先说明：
+这些坑在每个 notebook 里都有演示，先在这里集中列出：
 
 **1. 超图对象有两种，不能混用**
 
 | 类型 | 由谁产生 | 能喂给谁 |
 | --- | --- | --- |
 | `honet.Hypergraph` | 自己 `honet.Hypergraph(...)` 构造 | `incidence_matrix` / `degree_sequence` / `clique_projection` |
-| `hypernetx.Hypergraph` | 全部 `honet.build.*` 生成器 | `honet.metrics.*` / `honet.contagion.*` |
+| `hypernetx.Hypergraph` | 全部 `honet.build.*` 生成器 | `honet.metrics.*` / `honet.contagion.*` / `honet.community.*` / `honet.attack.*` |
 
 目前**没有**官方的 `hypernetx → honet.Hypergraph` 转换器。需要时手动重建，
 注意去重（hypernetx 允许重复成员集，`honet.Hypergraph` 会拒绝）：
@@ -57,11 +61,27 @@ honet.Hypergraph(edges=[sorted(H.edges[e]) for e in H.edges])
 想画曲线却用了 `simulate`，会得到只有几个点的「曲线」——那不是 bug，
 是事件驱动的本质。详见 [`04_contagion.ipynb`](04_contagion.ipynb)。
 
+**3. `execute_attack` 的 `nc_vals` 是自然连通度，不是连通分量占比**
+
+- 数值**可以大于 1**（实测某图初始值 1.121）
+- 数值**越高越鲁棒**，跌到 0 表示网络被打散
+- `nc_vals` 首项固定写 `1.0`，那是「未攻击」的**基准占位**，不是真实度量值
+
+详见 [`06_community_attack.ipynb`](06_community_attack.ipynb)。
+
+**4. `draw_sis` 的参数顺序是 `(S, I, t)`**
+
+时间在**最后**。传反了不报错，只会画出一张错误的图——这类错误最难发现。
+
+**5. `export.beautify_global_metrics` 的 `ext` 取值是 `csv` / `excel` / `latex`**
+
+不是 `xlsx`。而且传路径时**不要带后缀**，函数会自己追加。
+
 ---
 
 ## 第二部分 · 综合实例（脚本）
 
-[`06_case_study_collaboration.py`](06_case_study_collaboration.py) 是一个**端到端**
+[`08_case_study_collaboration.py`](08_case_study_collaboration.py) 是一个**端到端**
 分析，回答一个具体问题：
 
 > 一个 13 人的科研协作网络里，如果只能做一次干预，应该选谁？
@@ -78,7 +98,7 @@ honet.Hypergraph(edges=[sorted(H.edges[e]) for e in H.edges])
 运行：
 
 ```bash
-python examples/06_case_study_collaboration.py
+python examples/08_case_study_collaboration.py
 ```
 
 依赖 `numpy` + `hypernetx`（即 `honet[analysis]`）。绘图可选，没装 matplotlib
@@ -86,7 +106,7 @@ python examples/06_case_study_collaboration.py
 
 ### 这个例子最想传达的一点
 
-**中心性高 ≠ 适合干预。** 脚本的输出会明确显示：
+**中心性高 ≠ 适合干预。** 脚本输出会明确显示：
 
 - 最活跃的人（加权度最高）
 - 位置最不可替代的人（桥接分数最高）
@@ -96,7 +116,7 @@ python examples/06_case_study_collaboration.py
 这四个**往往是不同的人**。而且脚本会指出平均可控性存在**并列**
 （结构等价的叶子结点算出相同的值），提醒你不能只看单一指标。
 
-图：`06_case_study_result.png`（四个视角并排对比）
+图：`08_case_study_result.png`（四个视角并排对比）
 
 ---
 
@@ -113,7 +133,7 @@ python docs/_make_examples.py
 python docs/_make_examples.py 04
 ```
 
-生成器会读取 [`docs/_example_sources/`](../docs/_example_sources/) 下的 `.py`
+生成器读取 [`docs/_example_sources/`](../docs/_example_sources/) 下的 `.py`
 描述文件（用 `# %%` / `# %% [markdown]` 标记 cell），真实执行每个 cell，
 把输出和 `execution_count` 一起写进 `.ipynb`。
 
@@ -124,6 +144,9 @@ notebook 里记录的 API 用法**真的能跑通**。
 要改示例，改 `docs/_example_sources/*.py`，然后重新生成。别直接编辑 `.ipynb`，
 下次生成会覆盖。
 
+> 注意：`08_case_study_collaboration.py` 是**独立脚本**，不经过生成器，
+> 直接改这个文件即可。
+
 ---
 
 ## 环境要求
@@ -132,7 +155,10 @@ notebook 里记录的 API 用法**真的能跑通**。
 uv sync --extra analysis    # 跑全部 notebook 和脚本
 ```
 
-- `01`：零依赖（仅 `honet` 本身）
-- `02` / `03` / `04`：需要 `honet[analysis]`（hypernetx、numpy 等）
-- `05`：需要 `numpy`（scipy 可选）
-- `06`：需要 `numpy` + `hypernetx`，matplotlib 可选
+| 示例 | 依赖 |
+| --- | --- |
+| `01` | 零依赖（仅 `honet` 本身） |
+| `02` / `03` / `04` / `06` | `honet[analysis]`（hypernetx、numpy 等） |
+| `05` | `numpy`（scipy 可选） |
+| `07` | `honet[pandas]` + `honet[viz]`（matplotlib；Excel 需 openpyxl） |
+| `08` | `numpy` + `hypernetx`，matplotlib 可选 |
