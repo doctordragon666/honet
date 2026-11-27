@@ -18,8 +18,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from honet._deps import require
-
 #: 支持的攻击目标
 _TARGETS = ("node", "edge")
 
@@ -27,26 +25,28 @@ _TARGETS = ("node", "edge")
 def _natural_connectivity(H: Any) -> float:
     """计算超图的自然连通度（``execute_attack`` 的默认度量）。
 
+    直接复用 :func:`honet.metrics.calc_natural_connectivity`：它带结构指纹
+    缓存，且已处理「只剩孤立结点时 ``adjacency_matrix`` 抛 ValueError」的
+    退化情形。攻击过程每步都会重建超图对象，按指纹缓存可避免同一结构被
+    重复求特征值。
+
     参数:
         H: hypernetx 超图对象。
 
     返回:
-        自然连通度；结点为空、或 hypernetx 无法构造邻接矩阵
-        （例如只剩孤立结点）时返回 ``0.0``。
+        自然连通度；结点为空、或无法构造邻接矩阵时返回 ``0.0``。
     """
-    np = require("numpy")
+    from honet.metrics._reuse import package_function
 
     if not H.nodes:
         return 0.0
     try:
-        adjacency = H.adjacency_matrix()
+        return float(package_function("honet.metrics", "calc_natural_connectivity")(H))
     except ValueError:
         # 只剩孤立结点时 2.x 的 adjacency_matrix 会因空索引抛 ValueError
         return 0.0
-
-    dense = adjacency.toarray() if hasattr(adjacency, "toarray") else np.asarray(adjacency)
-    eigenvalues = np.linalg.eigvalsh(dense)
-    return float(np.log(np.mean(np.exp(eigenvalues))))
+    except Exception:  # noqa: BLE001 - 度量失败不应中断整条攻击曲线
+        return 0.0
 
 
 def execute_attack(

@@ -60,6 +60,23 @@
   `H.nodes.degree`、`H.edges.members()`、`H.edges.size`、`hnx.bipartite()` 等）。
 - 旧库的驼峰命名（如 `honSIS` / `RandomDiscrete_SIS` / `extract_community_partition`
   的 `Method` 枚举值）保留为别名，指向同一个 snake_case 实现，便于旧代码平滑迁移。
+- **性能：减少重复计算与对象转换**（详见 `docs/PERFORMANCE.md`）
+  - 新增 `honet._topology`：把 hypernetx 对象一次性抽取成拓扑快照
+    （成员 / 隶属 / 度 / 规模），多个指标共享同一份结构，不再各自遍历。
+    改用 `H.edges.incidence_dict`（近 0ms）替代逐边 `H.edges[e]`（500 条边约 3.2ms）。
+  - 新增 `honet._cache`：按「结构特征 + 内容指纹」两级校验的缓存。
+    第一级只比较 `(超边数, 结点数, 成员总数)` 三个整数，命中时不计算指纹；
+    结构一变立即失效，不会返回过期结果。按 `id()` 索引并用
+    `weakref.finalize` 清理，对象回收后条目自动释放。
+  - `clustering_coefficient` 复杂度从 O(结点数 × 超边数) 降到 O(Σ 成员数²)。
+  - `weighted_degree` 在无权超图上直接取度值，不再构造关联矩阵。
+  - `get_avg_degree_by_edge_size` 改为按超边规模分桶，不再构造稠密矩阵。
+  - `betweenness_centrality` 复用索引建图并缓存结果，新增 `samples` 参数支持采样近似。
+  - `calc_entropy` / `calc_natural_connectivity` / `calc_reducibility` 结果缓存；
+    `calc_reducibility` 的 hypernetx → hypergraphx 转换结果也被复用。
+  - `execute_attack` 的默认度量改为复用 `calc_natural_connectivity`，避免每步重复求特征值。
+  - 实测（200 结点 / 500 超边）：缓存命中后各指标提速 55×–21000×；
+    连续计算 6 个指标时共享索引带来 1.9× 整体加速。
 
 ### Fixed
 

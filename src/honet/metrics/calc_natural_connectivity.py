@@ -12,7 +12,25 @@ from __future__ import annotations
 
 from typing import Any
 
+from honet import _cache
 from honet._deps import require
+
+
+def _compute(H: Any) -> float:
+    """计算自然连通度（邻接矩阵特征值的指数平均取对数）。"""
+    np = require("numpy")
+
+    if not H.nodes:
+        return 0.0
+
+    adjacency = H.adjacency_matrix()
+    # hypernetx 2.x 返回稀疏矩阵；1.x 曾返回 (矩阵, 结点索引, 超边索引) 元组
+    if isinstance(adjacency, tuple):
+        adjacency = adjacency[0]
+    dense = adjacency.toarray() if hasattr(adjacency, "toarray") else np.asarray(adjacency)
+
+    eigenvalues = np.linalg.eigvalsh(dense)
+    return float(np.log(np.mean(np.exp(eigenvalues))))
 
 
 def calc_natural_connectivity(H: Any) -> float:
@@ -31,6 +49,7 @@ def calc_natural_connectivity(H: Any) -> float:
         旧实现写 ``H.adjacency_matrix().todense()``。hypernetx 2.4.3 的
         ``adjacency_matrix()`` 直接返回稀疏矩阵（不是 tuple），因此这里用
         ``toarray()`` 取稠密数组，同时兼容返回 tuple 的旧版本（取第一项）。
+        结果按超图结构指纹缓存；结构未变时重复调用直接返回上次结果。
 
     示例:
         >>> import hypernetx as hnx
@@ -38,16 +57,4 @@ def calc_natural_connectivity(H: Any) -> float:
         >>> round(calc_natural_connectivity(H), 4)
         0.4338
     """
-    np = require("numpy")
-
-    if not H.nodes:
-        return 0.0
-
-    adjacency = H.adjacency_matrix()
-    # hypernetx 2.x 返回稀疏矩阵；1.x 曾返回 (矩阵, 结点索引, 超边索引) 元组
-    if isinstance(adjacency, tuple):
-        adjacency = adjacency[0]
-    dense = adjacency.toarray() if hasattr(adjacency, "toarray") else np.asarray(adjacency)
-
-    eigenvalues = np.linalg.eigvalsh(dense)
-    return float(np.log(np.mean(np.exp(eigenvalues))))
+    return _cache.cached(H, "calc_natural_connectivity:v2", lambda: _compute(H))

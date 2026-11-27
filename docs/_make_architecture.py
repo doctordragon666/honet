@@ -40,11 +40,13 @@ CORE = [
     ("_types.py", "Node / Members 类型别名"),
 ]
 
-# 适配层：重构新增，隔离「可选依赖」与「hypernetx 版本差异」
+# 适配层：重构新增，隔离「可选依赖」与「hypernetx 版本差异」，并提供共享缓存
 ADAPTER = [
     ("_hnx.py", "hypernetx 1.x / 2.x 兼容层", "analysis"),
     ("_deps.py", "可选依赖导入 + 安装提示", "—"),
     ("_lazy.py", "PEP 562 惰性导出", "—"),
+    ("_cache.py", "结构指纹缓存（两级校验）", "—"),
+    ("_topology.py", "一次性拓扑索引（共享）", "—"),
 ]
 
 # 分析层：10 个新子包，全部惰性加载
@@ -234,8 +236,8 @@ def main() -> None:
     )
     ax.text(
         0.45, 0.18,
-        "验证：517 passed · ruff check / format 全通过 · "
-        "等价性 9 项与旧实现逐值一致 · import honet 不引入第三方依赖",
+        "验证：542 passed · ruff check / format 全通过 · "
+        "指标缓存命中后提速 55–21000× · import honet 不引入第三方依赖",
         fontsize=8.5, color="#78909c", ha="left", va="center", family=FONT,
     )
 

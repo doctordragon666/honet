@@ -30,6 +30,8 @@ honet/
 │   ├── _lazy.py                PEP 562 惰性导出机制（分析子包共用）
 │   ├── _deps.py                可选依赖导入 + 安装提示
 │   ├── _hnx.py                 hypernetx 1.x / 2.x 兼容层
+│   ├── _cache.py               结构指纹缓存（两级校验，见 PERFORMANCE.md）
+│   ├── _topology.py            一次性拓扑索引（多指标共享）
 │   ├── base/
 │   │   ├── network.py          HigherOrderNetwork（抽象基类）
 │   │   └── mixins/             WeightedMixin、DirectedMixin（各一个文件）
@@ -49,7 +51,8 @@ honet/
 └── .github/workflows/          CI / 定时发布
 ```
 
-分层架构见 [ARCHITECTURE.md](ARCHITECTURE.md)（含架构图）。
+分层架构见 [ARCHITECTURE.md](ARCHITECTURE.md)（含架构图），
+性能设计与缓存机制见 [PERFORMANCE.md](PERFORMANCE.md)。
 
 代码组织约定：
 
@@ -61,7 +64,10 @@ honet/
    并补测试（`tests/test_package.py` 会校验可导入性与版本一致性）；
 5. **分析子包不得引入硬依赖**：`dependencies` 保持为空，第三方包一律通过
    `honet._deps.require()` 获取，子包用 `honet._lazy` 惰性导出；
-6. 访问 hypernetx 时优先用 `honet._hnx` 的兼容函数，不要直接用 1.x 已删除的接口。
+6. 访问 hypernetx 时优先用 `honet._hnx` 的兼容函数，不要直接用 1.x 已删除的接口；
+7. **新指标优先复用 `honet._topology` 与 `honet._cache`**：
+   不要各自遍历 `H.edges` / 构造关联矩阵；全局指标尽量由局部指标导出。
+   缓存键带版本后缀（如 `"foo:v2"`），实现口径变化时递增以作废旧条目。
 
 > 历史：分析子包由旧库 `hypertrade`（原 `src/src/`）全量迁入，旧目录已删除。
 > 新旧等价性核查脚本归档在 `docs/_equiv_check.py.bak`，需要复核时可临时恢复

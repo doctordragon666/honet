@@ -8,8 +8,27 @@ from __future__ import annotations
 
 from typing import Any
 
+from honet import _cache
 from honet._deps import require
-from honet._hnx import node_degrees
+from honet._topology import topology
+
+
+def _compute(H: Any) -> float:
+    """在拓扑索引的度序列上计算香农熵。"""
+    np = require("numpy")
+
+    degrees = np.asarray(list(topology(H).degrees.values()), dtype=float)
+    total = degrees.sum()
+    if total <= 0.0:
+        return 0.0
+
+    p = degrees / total
+    if p.size <= 1:
+        # 只有一个结点（或只有一条关联）时分布退化，熵为 0；单独返回避免 -0.0
+        return 0.0
+    # 度为 0 的结点 p=0，0·ln0 约定为 0，用掩码排除避免 log(0) 警告
+    positive = p[p > 0.0]
+    return float(-np.sum(positive * np.log(positive)))
 
 
 def calc_entropy(H: Any) -> float:
@@ -30,8 +49,9 @@ def calc_entropy(H: Any) -> float:
     说明:
         旧实现调用 ``hypernetx.dist_stats(H)['node degree list']`` 取度序列，
         但 ``dist_stats`` 不属于 hypernetx 的稳定接口（2.x 各小版本字段名
-        有变动），因此这里改用 :func:`honet._hnx.node_degrees` 直接求度。
-        两者在 2.4.3 上给出同一组度值，熵是顺序无关量，结果完全一致。
+        有变动），因此这里改用拓扑索引里的度值。两者在 2.4.3 上给出同一组
+        度值，熵是顺序无关量，结果完全一致。
+        结果按超图结构指纹缓存；结构未变时重复调用直接返回上次结果。
 
     示例:
         >>> import hypernetx as hnx
@@ -39,17 +59,4 @@ def calc_entropy(H: Any) -> float:
         >>> round(calc_entropy(H), 4)
         1.0397
     """
-    np = require("numpy")
-
-    degrees = np.asarray(list(node_degrees(H).values()), dtype=float)
-    total = degrees.sum()
-    if total <= 0.0:
-        return 0.0
-
-    p = degrees / total
-    if p.size <= 1:
-        # 只有一个结点（或只有一条关联）时分布退化，熵为 0；单独返回避免 -0.0
-        return 0.0
-    # 度为 0 的结点 p=0，0·ln0 约定为 0，用掩码排除避免 log(0) 警告
-    positive = p[p > 0.0]
-    return float(-np.sum(positive * np.log(positive)))
+    return _cache.cached(H, "calc_entropy:v2", lambda: _compute(H))
