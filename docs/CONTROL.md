@@ -7,8 +7,9 @@
 | 拓扑层 | **控制哪些结点** | HAT（`honet[hat]`） | `calc_drivers` / `detect_dilation_and_drivers` |
 | 动力学层 | **怎么控制** | numpy / scipy | `HypergraphControlSystem` / `minimum_energy_control` |
 | 单纯形层 | **牵制哪个单纯形** | numpy | `rank_simplices` / `pinning_matrix` |
+| 稳态层 | **哪个结点是好的控制入口** | numpy / scipy | `average_controllability` / `optimal_control` |
 
-拓扑层回答「控制哪些结点」，但不含动力学、耦合与控制律。后两层补齐这部分。
+拓扑层回答「控制哪些结点」，但不含动力学、耦合与控制律。后三层补齐这部分。
 
 ---
 
@@ -205,7 +206,100 @@ pinning_matrix([s], N, weight=eps, include_simplex=False)  # Δλ₂ ≈ ε·Δ^
 
 ---
 
-## 三、已知边界
+## 三、稳态层：网络控制入口与带约束最优控制
+
+参考 [nctpy](https://github.com/BassettLab/nctpy)（Gu et al., *Nature
+Communications* 6:8414, 2015 的实现库）。这一层回答「**哪个结点是好的控制
+入口**」以及「**在状态轨迹约束下怎么控制**」。
+
+### 矩阵归一化与稳定性
+
+```python
+from honet.control import matrix_normalization, is_stable
+
+A_norm = matrix_normalization(A, "continuous")   # A/(c+λmax) - I
+print(is_stable(A_norm, "continuous"))           # True
+```
+
+连续时间归一化保证稳定（谱实部为负），离散时间保证谱半径 < 1。这是后续所有
+稳态量的前提——不稳定系统的无限时域 Gramian 不存在。
+
+### 无限时域 Gramian
+
+有限时域 Gramian 需要数值积分，无限时域则退化为解 Lyapunov 方程：
+
+```
+连续：A W + W Aᵀ + BBᵀ = 0      ⟺  W = ∫₀^∞ e^{As}BBᵀe^{Aᵀs}ds
+离散：W - A W Aᵀ = BBᵀ          ⟺  W = Σₖ AᵏBBᵀ(Aᵀ)ᵏ
+```
+
+```python
+from honet.control import infinite_gramian, gramian_auto
+
+W = infinite_gramian(A_norm, np.eye(N), "continuous")
+W = gramian_auto(A_norm, np.eye(N), None, "continuous")   # T=None 自动选无限
+```
+
+不稳定系统会抛 `ValueError`，而不是静默返回 `nan`（nctpy 是打印警告后返回 `nan`）。
+
+### 可控性度量
+
+| 指标 | 含义 | 用途 |
+| --- | --- | --- |
+| `average_controllability` | 该结点作为唯一入口时的平均能量 | 选「能量上划算」的入口 |
+| `modal_controllability` | 驱动难控模态（λ 接近 ±1）的能力 | 选「能撬动慢模态」的入口 |
+| `control_energy_ranking` | 按平均可控性排序 | 直接给出候选名单 |
+
+```python
+from honet.control import average_controllability, control_energy_ranking
+
+ac = average_controllability(A_norm, "continuous")   # 每个结点的平均可控性
+ranking = control_energy_ranking(A_norm)             # [(结点, 值), ...] 降序
+```
+
+解析验证：对角系统 `A = diag(a)` 有闭式解 `ac_i = -1/(2a_i)`、
+`φ_i = 1 - a_i²`，测试直接对照这两个式子。
+
+### 带状态轨迹约束的最优控制
+
+与最小能量控制的区别：这里允许惩罚**状态轨迹偏离参考状态**，目标函数是
+
+```
+J = ∫₀ᵀ [ ρ‖u(t)‖² + ‖S(x(t) - x_r)‖² ] dt
+```
+
+求解用 Hamiltonian 状态-协态法。连续时间构造联合矩阵：
+
+```
+d/dt [x; λ] = M [x; λ] + c
+M = [[A,        -BBᵀ/(2ρ)],
+     [-2S,      -Aᵀ       ]]
+c = [0; 2S x_r]
+```
+
+两端边值（`x(0)` 与 `x(T)` 都已知）先解出 `λ(0)`，再正向积分。
+
+```python
+from honet.control import optimal_control
+
+result = optimal_control(
+    A_norm, np.eye(N), x0, xf, T=1.0,
+    rho=1.0, S=np.eye(N), xr="zero", system="continuous",
+)
+print(result.final_error, result.energy)
+```
+
+`rho` 越小，控制能量权重越低；`S` 越大，状态越贴合参考。`S=0` 时退化为
+最小能量控制（与 `minimum_energy_control` 数值一致）。
+
+离散时间走另一条路径：把所有时刻的约束拼成一个大型稀疏线性系统一次求解。
+
+**与 nctpy 的数值对照**（`rho`/`S` 三组参数）：状态误差 ≤7.8e-16、
+输入误差 ≤2.9e-15，达到机器精度。
+
+---
+
+## 四、已知边界
 
 1. **λ₂ 必须是单根**。若 `λ₂` 有重数（如完全图 K4 的重数为 3），Fiedler 向量
    不唯一，`Δ^s` 的排序依赖选取，定理 3 的一阶近似会退化（实测 `Δλ₂ ≈ 0`）。
@@ -227,3 +321,15 @@ pinning_matrix([s], N, weight=eps, include_simplex=False)  # Δλ₂ ≈ ε·Δ^
 
 5. **EoN 式的 `rng` 参数尚未贯通到控制层**。控制层的随机性仅出现在
    初值抽样（调用方自行提供），因此当前不需要。
+
+6. **nctpy 的部分路径在当前 scipy 上不可用**。nctpy 的 `gramian` 用字符串比较
+   版本号（`sp.__version__ < '1.6.0'`），在 scipy 1.18 上误判为旧版，去调用已被
+   移除的 `sp.integrate.simps`，导致 `ave_control(..., system='continuous')` 与
+   `gramian(..., T=有限)` 抛 `AttributeError`。本实现不受影响（用
+   `scipy.linalg.expm` 与 Lyapunov 求解），连续平均可控性已用解析解验证。
+   这是 nctpy 的 bug，不是移植错误。
+
+7. **`optimal_control` 的 `S=0` 情形依赖 Gramian 伪逆**。状态-协态法在 `S=0`
+   时协态方程与状态解耦，理论上 `E12` 会变奇异；实测本实现对给定算例仍精确
+   （`E12` 未真正奇异）。若遇到 `E12` 奇异，会抛明确的 `ValueError` 提示增大
+   `T` 或检查 `B`，而不是静默返回错误结果。

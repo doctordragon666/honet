@@ -53,6 +53,23 @@
 
 ### Added
 
+- **控制框架新增稳态层：网络控制入口 + 带约束最优控制**（参考 nctpy）
+  - 补齐与 nctpy 对齐的三块能力，全部只用 numpy / scipy：
+  - **稳态与能量分析**（`_steady_state.py`）：`matrix_normalization` 谱归一化、
+    `is_stable` 稳定性判定、`infinite_gramian`（Lyapunov 方程，支持连续/离散）、
+    `gramian_auto` 按时域自动选择。不稳定系统抛 `ValueError` 而非返回 `nan`。
+  - **可控性度量**（`_metrics.py`）：`average_controllability`（平均可控性）、
+    `modal_controllability`（模态可控性）、`control_energy_ranking`（结点排名）。
+  - **带状态轨迹约束的最优控制**（`_optimal_control.py`）：`optimal_control`
+    用 Hamiltonian 状态-协态法求解 `J = ∫[ρ‖u‖² + ‖S(x-x_r)‖²]dt`，
+    支持连续/离散两种时间系统。
+  - 与 nctpy 数值对照：归一化 / 无限 Gramian / 平均可控性 / 模态可控性
+    误差 ≤1.1e-15；`optimal_control` 与 `get_control_inputs` 状态误差 ≤7.8e-16。
+  - 发现 nctpy 自身 bug（scipy 版本字符串比较误判，调用已移除的
+    `sp.integrate.simps`），已在文档记录，本实现不受影响。
+
+### Added
+
 - **控制框架：从「控制哪些结点」扩展到「怎么控制」**（详见 `docs/CONTROL.md`）
   - 原先 `honet.control` 只有拓扑层（dilation 检测 / 可达性 / 最小驱动集），
     缺少动力学、耦合与控制律。新增两层补齐：

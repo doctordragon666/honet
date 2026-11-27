@@ -68,6 +68,18 @@ _EXPORTS = {
     "gramian": "honet.control._controllability:gramian",
     "gramian_rank": "honet.control._controllability:gramian_rank",
     "minimum_energy_control": "honet.control._control_law:minimum_energy_control",
+    # ---- 稳态与能量分析（参考 nctpy）----
+    "matrix_normalization": "honet.control._steady_state:matrix_normalization",
+    "is_stable": "honet.control._steady_state:is_stable",
+    "infinite_gramian": "honet.control._steady_state:infinite_gramian",
+    "gramian_auto": "honet.control._steady_state:gramian_auto",
+    # ---- 可控性度量（参考 nctpy / Gu et al. 2015）----
+    "average_controllability": "honet.control._metrics:average_controllability",
+    "modal_controllability": "honet.control._metrics:modal_controllability",
+    "control_energy_ranking": "honet.control._metrics:control_energy_ranking",
+    # ---- 带状态约束的最优控制（参考 nctpy）----
+    "OptimalControlResult": "honet.control._optimal_control:OptimalControlResult",
+    "optimal_control": "honet.control._optimal_control:optimal_control",
     # ---- 单纯形牵制控制（周进等 2024，仅依赖 numpy）----
     "SimplexRanking": "honet.control._simplicial_control:SimplexRanking",
     "generalized_laplacian": "honet.control._simplicial_control:generalized_laplacian",
