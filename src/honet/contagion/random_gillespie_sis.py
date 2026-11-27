@@ -64,7 +64,9 @@ def random_gillespie_sis(
         model="SIS",
         sigma1=sigma1,
         sigma2=sigma2,
-        rho=0.1 if rho is None else rho,
+        # 只在没有显式初始感染者时才回落到默认比例，否则 initial_infecteds
+        # 会永远与 rho 冲突（底层要求两者互斥）。
+        rho=(0.1 if rho is None else rho) if initial_infecteds is None else rho,
         initial_infecteds=initial_infecteds,
         tmin=tmin,
         tmax=tmax,

@@ -32,6 +32,29 @@
 
 ### Added
 
+- **重写 `examples/`，按用途分为两部分**
+  - 第一部分：5 个 API 示例 notebook（`01_hypergraph_basics` / `02_metrics` /
+    `03_generators_convert` / `04_contagion` / `05_control`），每个覆盖一个子包。
+    全部输出为**真实执行结果**，由 `docs/_make_examples.py` 从
+    `docs/_example_sources/*.py` 生成（`allow_errors=False`，任一 cell 报错即中断）。
+  - 第二部分：`06_case_study_collaboration.py` 端到端综合实例，用 13 人协作网络
+    演示「构造 → 拓扑画像 → 高阶指标 → 传播风险 → 控制入口 → 综合结论」六步，
+    带详细中间注释与结构自检。
+  - `examples/README.md` 说明两部分结构与重新生成方式，并集中记录两个最易踩的坑
+    （两类超图对象不可混用、`simulate` 与 `random_discrete_sis` 返回格式不同）。
+  - 删除被替代的旧 notebook（`01_build_hypergraph` / `02_incidence_and_degrees` /
+    `03_clique_projection` / `04_collaboration_scenario`）。
+- 新增 `docs/_make_examples.py`：把带 `# %%` 标记的 `.py` 描述文件执行成 notebook，
+  输出与 `execution_count` 一并写入，避免手写 notebook 输出过时。
+
+### Fixed
+
+- **`initial_infecteds` 无法单独使用**：`random_discrete_sis` / `random_discrete_sir` /
+  `random_gillespie_sir` / `random_gillespie_sis` 四个封装函数无条件把 `rho=None`
+  改写成默认值 `0.1`，而底层要求 `rho` 与 `initial_infecteds` 互斥，导致只要传了
+  `initial_infecteds` 就必然抛 `ValueError`——「从指定结点开始传播」这类分析完全
+  无法进行。现在只在未显式给出初始感染者时才回落到默认比例。补 2 个回归测试。
+
 - `Hypergraph` 与四种高阶网络（`SimplicialComplexNetwork` / `HypergraphNetwork` /
   `MultilayerNetwork` / `TemporalNetwork`）新增 `from_dataframe` 类方法：按长表
   （一行 = 结点属于某条超边 / 单形 / 事件）构造，支持自定义列名与可选权重列；

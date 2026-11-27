@@ -68,7 +68,11 @@ def random_discrete_sis(
         model="SIS",
         sigma1=sigma1,
         sigma2=sigma2,
-        rho=0.1 if rho is None else rho,
+        # 只在**没有显式指定初始感染者**时才回落到默认比例 0.1。
+        # 旧实现无条件写 ``0.1 if rho is None else rho``，导致
+        # ``initial_infecteds`` 永远与 rho 冲突（底层要求两者互斥），
+        # 调用方无法"从指定结点开始"做模拟。
+        rho=(0.1 if rho is None else rho) if initial_infecteds is None else rho,
         initial_infecteds=initial_infecteds,
         tmin=tmin,
         tmax=tmax,

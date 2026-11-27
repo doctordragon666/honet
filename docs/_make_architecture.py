@@ -236,7 +236,7 @@ def main() -> None:
     )
     ax.text(
         0.45, 0.18,
-        "验证：763 passed · ruff check / format 全通过 · "
+        "验证：765 passed · ruff check / format 全通过 · "
         "指标缓存命中后提速 55–21000× · 传播模型可注册扩展",
         fontsize=8.5, color="#78909c", ha="left", va="center", family=FONT,
     )

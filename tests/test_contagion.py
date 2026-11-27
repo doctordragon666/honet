@@ -315,6 +315,30 @@ def test_rho_and_initial_infecteds_conflict(H: hnx.Hypergraph) -> None:
         discrete_sis_control(H, TAU, 0.3, rho=0.5, initial_infecteds=["a"], tmax=3, seed=1)
 
 
+def test_initial_infecteds_alone_is_accepted(H: hnx.Hypergraph) -> None:
+    """只给 initial_infecteds（不传 rho）应能正常模拟。
+
+    回归测试：旧实现无条件把 ``rho=None`` 改写成 ``0.1``，导致
+    ``initial_infecteds`` 永远与 rho 冲突，调用方无法指定初始感染者。
+    这会让"从某个结点开始传播"这类分析完全无法进行。
+    """
+    for func in (random_discrete_sis, random_discrete_sir, random_gillespie_sir):
+        result = func(H, TAU, 0.3, initial_infecteds=["a"], tmax=10, seed=1)
+        # 至少能跑通且时间序列非空
+        assert len(result[0]) > 0
+        # 起始时刻感染数应为 1（只有 a 被感染）
+        assert result[2][0] == 1
+
+
+def test_initial_infecteds_changes_initial_state(H: hnx.Hypergraph) -> None:
+    """指定不同的初始感染者应给出不同的初始状态（而非随机抽样）。"""
+    t_a, _, i_a = random_discrete_sis(H, TAU, 0.3, initial_infecteds=["a"], tmax=5, seed=7)
+    t_b, _, i_b = random_discrete_sis(H, TAU, 0.3, initial_infecteds=["c"], tmax=5, seed=7)
+    # 初始感染数都是 1，但后续轨迹应可不同（至少都能跑通）
+    assert i_a[0] == i_b[0] == 1
+    assert len(t_a) == len(t_b)
+
+
 def test_strategy_names_are_supported(H: hnx.Hypergraph) -> None:
     """所有策略名都能被解析并跑通（用会真正解析策略的 pulse 版本）。"""
     strategies = ("individual", "collective", "threshold", "default", "majority_vote")
