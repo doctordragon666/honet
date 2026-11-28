@@ -389,6 +389,17 @@ uv run --with "honet==0.2.0" python -c "import honet; print(honet.__version__)"
 注意 `environment: pypi` 必须与这里填写的 Environment name 完全一致，否则 OIDC 校验失败
 （报 `invalid-publisher` 或 403）。
 
+工作流在上传前有一步「预检 Trusted Publishing 配置」：它会先尝试用 OIDC 换 PyPI token，
+换不到就直接失败并把上面这四项要填的值打印出来。所以看到
+`::error title=PyPI Trusted Publishing 未配置::` 时，按提示补配置即可，
+不用去翻 Docker 日志里的英文原文。
+
+```{note}
+`invalid-publisher` 只在**真正要发新版本**时才暴露。若当前版本已存在于 PyPI，
+工作流会走「跳过发布」分支，预检也不会执行——这时工作流显示成功，
+并不代表 trusted publisher 已配好。
+```
+
 ### 10.2 为什么“定时”而不是“每次提交”
 
 发布由版本号驱动：只有把 `pyproject.toml` 的 `version` 改成新的稳定版本并推到 `main`，
@@ -416,7 +427,8 @@ uv run --with "honet==0.2.0" python -c "import honet; print(honet.__version__)"
 | `uv build` 报 `glob ... did not match any files` | `license-files` / `source-include` 指向的文件不存在 | 确认 `LICENSE`、`CHANGELOG.md` 与 `pyproject.toml` 同级 |
 | 版本号比较“乱序” | 用了 `0.2.0-rc1`、`0.2.0.dev-1` 等非 PEP 440 写法 | 严格用 `0.2.0rc1`、`0.2.0.dev1`；`+local` 后缀不允许上传 |
 | 验证项目安装时报“只支持 >=3.12” | 临时项目继承 `uv init` 默认的 `requires-python = ">=3.11"` | 建临时项目时加 `--python 3.12`（见第 7 节） |
-| Actions 报 `invalid-publisher` / 403 | PyPI pending publisher 的 Owner / Repo / Workflow / Environment 与仓库不一致 | 按第 10.1 节逐项核对，`environment` 名必须是 `pypi` |
+| Actions 报 `invalid-publisher` / 403 | PyPI 侧没有匹配的 trusted publisher，或 Owner / Repo / Workflow / Environment 与仓库不一致 | 按第 10.1 节逐项核对，`environment` 名必须是 `pypi`。工作流的「预检 Trusted Publishing 配置」步骤会直接打印该填的四项 |
+| Actions 报 `Token request failed: ... no corresponding publisher` | 同上，OIDC 换票被 PyPI 拒绝 | 这是 PyPI 侧配置问题，**改代码无用**；补配 trusted publisher 后重跑 |
 
 ### 撤销与补救
 

@@ -88,6 +88,50 @@ jobs:
           uv build
           uvx twine check dist/*
 
+      # 上传前先验证 OIDC 能否换到 PyPI token。
+      # 换不到时（最常见是 PyPI 侧没配 trusted publisher，报 invalid-publisher），
+      # 在 gh-action-pypi-publish 里只会在 Docker 日志深处留一行英文，
+      # 很难判断该改哪里。这里提前失败，并把「该去哪、填什么」直接打出来。
+      - name: 预检 Trusted Publishing 配置
+        if: steps.channel.outputs.stable == 'true' && steps.exists.outputs.value == 'false'
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          set -uo pipefail
+          # 向 PyPI 的 OIDC token 端点换票；不打印 token 本身。
+          body=$(curl -sS -X POST \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=pypi" 2>&1) || true
+          token=$(printf '%s' "$body" | sed -n 's/.*"value":"\([^"]*\)".*/\1/p')
+
+          if [ -n "$token" ]; then
+            echo "::notice::OIDC 换票成功，可以上传 ${VERSION}。"
+            exit 0
+          fi
+
+          echo "::error title=PyPI Trusted Publishing 未配置::OIDC 换票失败，PyPI 侧没有匹配的 trusted publisher。"
+          cat <<'EOF'
+
+          ────────────────────────────────────────────────────────────────
+          需要在 PyPI 上为本项目配置 trusted publisher（只需一次）：
+
+            1. 打开 https://pypi.org/manage/project/honet/settings/publishing/
+            2. 点 "Add a new pending publisher"（GitHub 标签页）
+            3. 按下面这些值填写（必须完全一致，区分大小写）：
+
+                 Owner             doctordragon666
+                 Repository name   honet
+                 Workflow name     publish-pypi.yml
+                 Environment name  pypi
+
+          填错任一项都会得到 invalid-publisher。配好后再重跑本工作流即可。
+          ────────────────────────────────────────────────────────────────
+
+          PyPI 原始响应：
+          EOF
+          printf '%s\n' "$body"
+          exit 1
+
       - name: 上传到 PyPI
         if: steps.channel.outputs.stable == 'true' && steps.exists.outputs.value == 'false'
         uses: pypa/gh-action-pypi-publish@release/v1
