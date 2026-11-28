@@ -7,7 +7,7 @@ from honet.core import Hypergraph
 
 
 def incidence_matrix(hg: Hypergraph) -> list[list[int]]:
-    """计算超图的关联矩阵 ``B``（incidence matrix）。
+    """计算超图的关联矩阵 ``B`` （incidence matrix）。
 
     定义：``B[i][j] = 1`` 当且仅当第 ``i`` 个结点属于第 ``j`` 条超边，否则为 0。
     矩阵形状为 ``num_nodes × num_edges``，行顺序与 :attr:`Hypergraph.nodes` 一致，

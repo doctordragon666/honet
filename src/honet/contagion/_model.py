@@ -293,7 +293,7 @@ _ALIASES = {"SIS": SIS, "SIR": SIR}
 def resolve_model(model: Any) -> CompartmentModel:
     """把旧接口里的 ``model`` 参数（字符串或规格）解析成规格。
 
-    与 :func:`get_model` 的区别：本函数额外接受 ``None``（按 SIS 处理），
+    与 :func:`get_model` 的区别：本函数额外接受 ``None`` （按 SIS 处理），
     便于旧代码在未显式传模型时保持原有行为。
     """
     if model is None:

@@ -164,7 +164,7 @@ HigherOrderNetwork (ABC，不可实例化)          honet/base/network.py
 
 包内实现按「一个文件只放一个类／一个函数」拆分到 `src/honet/` 下的 `base/`、`core/`、
 `simplicial/`、`hypergraph/`、`multilayer/`、`temporal/`、`utils/` 子包。
-目录结构与开发约定见[开发指南](https://github.com/doctordragon666/honet/blob/main/docs/DEVELOPMENT.md)。
+目录结构与开发约定见[开发指南](https://doctordragon666.github.io/honet/development/index.html)。
 
 加权与有向能力由 `WeightedMixin` / `DirectedMixin` 承载（`is_weighted` / `is_directed`
 标记、权重默认 `1.0` 且必须为正、有向成员保留顺序并拒绝自环与重复结点），
@@ -196,7 +196,7 @@ print(sc.num_facets, sc.num_faces, sc.dimension)   # 1 7 2
 
 ## 示例
 
-`examples/` 下是四个 Jupyter notebook，用硬编码的小数据覆盖全部公开 API。
+`examples/` 下是七个 Jupyter notebook 加一个综合实例脚本，用硬编码的小数据覆盖全部公开 API。
 notebook 只是文档，**不随包分发**，也不需要装进项目依赖——按需通过 uv 拉起 jupyter：
 
 ```bash
@@ -205,15 +205,19 @@ uv run --with jupyter --with ipykernel jupyter lab examples/
 
 # 或在终端里就地执行某个 notebook，并把输出写回文件
 uv run --with jupyter --with ipykernel jupyter nbconvert \
-  --to notebook --execute --inplace examples/01_build_hypergraph.ipynb
+  --to notebook --execute --inplace examples/01_hypergraph_basics.ipynb
 ```
 
-| Notebook                            | 一句话说明                                                       |
-| ----------------------------------- | ---------------------------------------------------------------- |
-| `01_build_hypergraph.ipynb`       | 构造超图：结点、带标签/带权超边、高阶度与重复边保护              |
-| `02_incidence_and_degrees.ipynb`  | 关联矩阵、列和/行和校验、度序列与度分布                          |
-| `03_clique_projection.ipynb`      | 团投影，以及“三元边 vs 三条二元边”投影相同但结构不同的信息损失 |
-| `04_collaboration_scenario.ipynb` | 6 人实验室合作网络小场景：高阶度、加权度与投影来源追溯           |
+| Notebook | 一句话说明 |
+| --- | --- |
+| `01_hypergraph_basics.ipynb` | 构造超图、关联矩阵、高阶度、团投影、四种网络形态 |
+| `02_metrics.ipynb` | 9 个结构指标 |
+| `03_generators_convert.ipynb` | 随机超图生成、格式互转 |
+| `04_contagion.ipynb` | SIS/SIR 传播、阈值、相图 |
+| `05_control.ipynb` | 可控性、最优控制、牵制选择 |
+| `06_community_attack.ipynb` | 社区发现、攻击鲁棒性 |
+| `07_io_export_plot.ipynb` | 读写、导出、绘图 |
+| `08_case_study_collaboration.py` | 端到端综合实例（脚本，非 notebook） |
 
 ## 给 AI 助手
 
@@ -228,16 +232,29 @@ uv run --with jupyter --with ipykernel jupyter nbconvert \
 
 ## 文档
 
-本页与 `examples/` 面向**使用者**；构建、测试、发布等**开发者文档**集中在 `docs/`，
+完整文档（Sphinx 构建，含逐符号 API 参考）在线浏览：
+
+**<https://doctordragon666.github.io/honet/>**
+
+推送 `main` 后由 [`.github/workflows/docs.yml`](.github/workflows/docs.yml) 自动构建并部署；
+构建使用 `-W`（警告即错误），文档里的断链、缺符号、坏表格都会让 CI 失败。
+
+本页与 `examples/` 面向**使用者**；构建、测试、发布等**开发者文档**在 `docs/`，
 不随包分发：
 
 | 文档 | 面向 | 内容 |
 | --- | --- | --- |
 | 本页 README | 用户 | 安装、快速开始、API 概览、类层次、示例 |
-| [`examples/`](https://github.com/doctordragon666/honet/tree/main/examples) | 用户 | 四个可执行 notebook，覆盖全部公开 API |
+| [在线文档](https://doctordragon666.github.io/honet/) | 用户 / 开发 | 使用指南、API 参考、开发文档全站 |
+| [`examples/`](https://github.com/doctordragon666/honet/tree/main/examples) | 用户 | 七个可执行 notebook + 一个综合实例脚本 |
 | [`CHANGELOG.md`](https://github.com/doctordragon666/honet/blob/main/CHANGELOG.md) | 用户 / 开发 | 按 dev / rc / stable 通道记录的版本变更 |
-| [`docs/DEVELOPMENT.md`](https://github.com/doctordragon666/honet/blob/main/docs/DEVELOPMENT.md) | 开发 | 环境、目录结构、测试与静态检查、构建、notebook 执行 |
-| [`docs/PUBLISHING.md`](https://github.com/doctordragon666/honet/blob/main/docs/PUBLISHING.md) | 开发 | 版本通道、twine 上传、GitHub Actions 定时发布、故障排查 |
+
+本地构建文档：
+
+```bash
+uv sync --group docs --extra all
+uv run --group docs sphinx-build -b html docs docs/_build/html -W
+```
 
 ## 许可证
 

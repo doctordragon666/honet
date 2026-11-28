@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class HypergraphNetwork(HigherOrderNetwork):
     """超图网络：以**超边**为存储单位，大小任意且不要求向下封闭。
 
-    与 ``SimplicialComplexNetwork`` 的差别：加入 ``{a, b, c}`` **不会**自动产生
+    与 ``SimplicialComplexNetwork`` 的差别：加入 ``{a, b, c}`` **不会** 自动产生
     ``{a, b}`` 等子边；只有显式加入的边才存在。
 
     Args:

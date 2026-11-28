@@ -20,7 +20,7 @@ def load_map_data(path: str | Path) -> gpd.GeoDataFrame:
     """加载地图数据。
 
     参数:
-        path: 地图文件路径，通常是 ``.shp``（任何 geopandas 支持的矢量格式均可）。
+        path: 地图文件路径，通常是 ``.shp`` （任何 geopandas 支持的矢量格式均可）。
 
     返回:
         ``geopandas.GeoDataFrame``，含几何列，可直接用于绘图或按区域匹配。

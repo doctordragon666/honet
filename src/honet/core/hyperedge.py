@@ -3,7 +3,7 @@
 一条超边表示“任意数量的结点构成的一个整体”，用于刻画高阶交互
 （例如一篇论文的合作者集合、一次多体碰撞）。
 
-被以下文件使用：``src/honet/core/hypergraph.py``（容器存储）、
+被以下文件使用：``src/honet/core/hypergraph.py`` （容器存储）、
 ``src/honet/core/__init__.py``（re-export）、``src/honet/utils/*``。
 """
 
@@ -20,7 +20,7 @@ class Hyperedge:
 
     Attributes:
         members: 超边包含的结点集合，构造时由调用方传入的可迭代对象转换为
-            ``frozenset``（自动去重、无序）。不可为空。
+            ``frozenset`` （自动去重、无序）。不可为空。
         label: 可选的超边标签，用于区分成员相同但语义不同的高阶交互
             （例如“同一批作者的 2023 年论文”与“2024 年论文”）。
             为 ``None`` 表示无标签；传入空字符串或纯空白字符串会报错。

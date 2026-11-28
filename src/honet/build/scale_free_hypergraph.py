@@ -28,7 +28,7 @@ def scale_free_hypergraph(n: int, k: int, m: int, gamma: float = 2.5, seed: int 
 
     抛出:
         ValueError: ``n < 2``、``k < 2``、``k > n``、``m < 0``，或
-            ``gamma <= 0``（否则概率分布退化）。
+            ``gamma <= 0`` （否则概率分布退化）。
         ImportError: 未安装 hypernetx / numpy（需要 ``honet[analysis]``）。
 
     备注:
@@ -38,7 +38,7 @@ def scale_free_hypergraph(n: int, k: int, m: int, gamma: float = 2.5, seed: int 
            ``random.Random(seed)`` 与 ``np.random.default_rng(seed)`` 两个独立
            随机源，不污染全局状态；固定 ``seed`` 下可复现。
         2. 旧实现返回 ``{"head": [...], "tail": [...]}`` 的**列表**；本实现返回
-           可直接使用的 ``hypernetx.Hypergraph``（head/tail 仍作为超边属性可查）。
+           可直接使用的 ``hypernetx.Hypergraph`` （head/tail 仍作为超边属性可查）。
         3. 旧代码在 ``n <= k`` 时 ``random.sample`` 会抛
            ``ValueError: Sample larger than population``，本实现提前校验并给出
            带参数名的提示。

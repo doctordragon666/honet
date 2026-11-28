@@ -39,7 +39,7 @@ def integrate_control_energy(U: Any, dt: float = 1.0) -> Any:
         True
 
     说明:
-        用 ``scipy.integrate.simpson``（Simpson 1/3 法则）。若点数不足 3，
+        用 ``scipy.integrate.simpson`` （Simpson 1/3 法则）。若点数不足 3，
         退化为梯形法。nctpy 在同名函数里用字符串比较 scipy 版本号来选择
         ``simps`` / ``simpson``，在 scipy >= 1.14 上会因 ``simps`` 已移除而
         崩溃；这里直接调用现存的 ``simpson``。
@@ -93,7 +93,7 @@ def minimum_energy_fast(
             W ≈ dt/3 · (B Bᵀ + 4Σ_odd + 2Σ_even + e^{AT}BBᵀe^{AᵀT})
 
         这是 nctpy ``minimum_energy_fast`` 的做法。精确解请用
-        :func:`honet.control.minimum_energy_control`（块指数法）。
+        :func:`honet.control.minimum_energy_control` （块指数法）。
     """
     np = require("numpy")
     expm = require("scipy.linalg", attr="expm")

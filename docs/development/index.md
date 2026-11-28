@@ -2,8 +2,8 @@
 
 本文档面向**贡献者与维护者**，只讲怎么改、怎么测、怎么构建。
 
-- 只想使用 `honet`：看 [README](../README.md) 与 [`examples/`](../examples/)；
-- 要发布版本：看 [PUBLISHING.md](PUBLISHING.md)（含 GitHub Actions 定时发布）。
+- 只想使用 `honet`：[快速开始](../guide/quickstart.md) 与 [`examples/`](https://github.com/doctordragon666/honet/tree/main/examples)；
+- 要发布版本：看 [发布指南](publishing.md)（含 GitHub Actions 定时发布）。
 
 ## 0. 环境
 
@@ -30,7 +30,7 @@ honet/
 │   ├── _lazy.py                PEP 562 惰性导出机制（分析子包共用）
 │   ├── _deps.py                可选依赖导入 + 安装提示
 │   ├── _hnx.py                 hypernetx 1.x / 2.x 兼容层
-│   ├── _cache.py               结构指纹缓存（两级校验，见 PERFORMANCE.md）
+│   ├── _cache.py               结构指纹缓存（两级校验，见「性能设计」）
 │   ├── _topology.py            一次性拓扑索引（多指标共享）
 │   ├── base/
 │   │   ├── network.py          HigherOrderNetwork（抽象基类）
@@ -42,19 +42,22 @@ honet/
 │   ├── temporal/network.py     时序基类 + W/D/WD
 │   ├── utils/                  每个度量函数一个模块
 │   └── {io,convert,build,metrics,community,contagion,attack,control,plot,export}/
-│                               分析子包（每个子包一个文件一个函数 + 惰性 __init__）
+│                               分析子包（每个子包一个文件一个函数 + 惰性 __init__；
+│                               metrics 例外：按粒度收敛为 nodemetrics /
+│                               edgemetrics / globalmetrics 三个模块）
 ├── tests/                      pytest 测试（不随包分发）
 ├── examples/                   Jupyter notebook（不随包分发）
-├── docs/                       开发文档（不随包分发）
+├── docs/                       Sphinx 文档源（构建产物在 docs/_build，不随包分发）
+├── tools/                      开发期脚本：notebook 与架构图生成器、示例源
 ├── llms.txt                    LLM 可读的包说明（llmstxt.org 风格）
 ├── AGENTS.md                   编码代理使用约定
-└── .github/workflows/          CI / 定时发布
+└── .github/workflows/          CI / 文档部署 / 定时发布
 ```
 
-分层架构见 [ARCHITECTURE.md](ARCHITECTURE.md)（含架构图），
-性能设计与缓存机制见 [PERFORMANCE.md](PERFORMANCE.md)，
-传播模型的扩展方式见 [CONTAGION.md](CONTAGION.md)，
-控制框架（超图可控性 + 单纯形牵制）见 [CONTROL.md](CONTROL.md)。
+分层架构见 [架构](architecture.md)（含架构图），
+性能设计与缓存机制见 [性能设计](performance.md)，
+传播模型的扩展方式见 [传播模型](contagion.md)，
+控制框架（超图可控性 + 单纯形牵制）见 [控制框架](control.md)。
 
 代码组织约定：
 
@@ -70,10 +73,20 @@ honet/
 7. **新指标优先复用 `honet._topology` 与 `honet._cache`**：
    不要各自遍历 `H.edges` / 构造关联矩阵；全局指标尽量由局部指标导出。
    缓存键带版本后缀（如 `"foo:v2"`），实现口径变化时递增以作废旧条目。
+8. **`honet.metrics` 按粒度分文件**，不再一个指标一个文件：结点级进
+   `nodemetrics.py`、超边级进 `edgemetrics.py`、全局级进 `globalmetrics.py`；
+   新指标按「返回什么」归位（`{结点: 值}` / `{分组: 值}` / 标量或汇总表）。
+   实现模块名与公开函数名不同，子包内部可直接 `from honet.metrics.nodemetrics
+   import clustering_coefficient`，不会像同名模块那样遮蔽包属性。
+   只有 `honet.convert` 仍保持「一个文件一个函数」，跨模块取用走
+   `honet.metrics._reuse.package_function`。
+   结点级指标默认接收 hypernetx 超图；面向**时序**的指标（如
+   `temporal_closeness_centrality`）接收 `honet.TemporalNetwork`，并在入口处
+   用 `isinstance` 显式校验——时序语义与静态语义不同，静默接受会造成误读。
 
 > 历史：分析子包由旧库 `hypertrade`（原 `src/src/`）全量迁入，旧目录已删除。
-> 新旧等价性核查脚本归档在 `docs/_equiv_check.py.bak`，需要复核时可临时恢复
-> 旧库后运行。
+> 新旧等价性核查是一次性工作，核查脚本未随仓库保留；需要复核时须先恢复旧库，
+> 再按当时的口径重跑。
 
 ## 2. 日常命令
 
@@ -100,27 +113,54 @@ uvx twine check dist/*.whl dist/*.tar.gz   # README 渲染与元数据校验
 
 ## 4. 示例 notebook
 
-`examples/` 里的 notebook 是用户文档的一部分，改动公共 API 后要确保它们仍能执行：
+`examples/` 里的 notebook 是用户文档的一部分，改动公共 API 后要确保它们仍能执行。
+notebook 由 `tools/_make_examples.py` 从 `tools/_example_sources/*.py` 生成，
+**不要直接编辑 `.ipynb`**——改源文件后重新生成：
+
+```bash
+uv run --with nbformat --with nbclient python tools/_make_examples.py    # 全部
+uv run --with nbformat --with nbclient python tools/_make_examples.py 04 # 只生成 04
+```
+
+交互式浏览：
 
 ```bash
 uv run --with jupyter --with ipykernel jupyter lab examples/
-uv run --with jupyter --with ipykernel jupyter nbconvert \
-  --to notebook --execute --inplace examples/01_build_hypergraph.ipynb
 ```
 
-jupyter 不进项目依赖，用 `--with` 现拉即可；执行后的输出会写回 notebook，
-提交前确认输出与代码一致。
+jupyter 不进项目依赖，用 `--with` 现拉即可。生成器会剥掉时间戳并合并 stream 输出，
+因此「同内容重新生成」应当是字节零差异——若 `git diff` 出现整文件重写，说明
+生成链路被破坏了。
 
-## 5. 提交前检查清单
+## 5. 文档
+
+文档用 **Sphinx + MyST**，源就是 `docs/` 下的 Markdown。本地构建：
+
+```bash
+uv run --group docs sphinx-build -b html docs docs/_build/html -W
+```
+
+`-W` 把警告当错误，与 CI 一致。API 参考页在 `docs/api/`，用 `autodoc` 从源码
+docstring 生成；改了公开 API 后要同步 `docs/api/` 里对应的 `autosummary` 列表。
+
+架构图与 notebook 由 `tools/` 下的脚本生成，产物分别落在
+`docs/_static/` 与 `examples/`：
+
+```bash
+uv run --with matplotlib python tools/_make_architecture.py
+```
+
+## 6. 提交前检查清单
 
 - [ ] `uv run pytest` 全绿；
 - [ ] `uv run ruff check .` 与 `uv run ruff format --check .` 无输出；
+- [ ] `uv run --group docs sphinx-build -b html docs docs/_build/html -W` 无警告；
 - [ ] 新增/改名的公开符号已进入 `__all__`，并有对应测试；
 - [ ] `CHANGELOG.md` 的 `[Unreleased]` 记录了本次变更；
-- [ ] 面向用户的文档（`README.md`、`examples/`）与实际行为一致；
+- [ ] 面向用户的文档（`README.md`、`examples/`、`docs/`）与实际行为一致；
 - [ ] 改动了版本号时才需要 `uv build` + `uvx twine check`。
 
-## 6. 发布
+## 7. 发布
 
 版本号、通道（dev/rc/stable）、twine 上传、GitHub Actions 定时发布与常见失败原因，
-全部见 [PUBLISHING.md](PUBLISHING.md)。
+全部见 [发布指南](publishing.md)。

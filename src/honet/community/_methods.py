@@ -9,7 +9,7 @@
 ``honet.community`` 的包属性 ``random_method`` 写成**模块对象**，遮蔽
 ``__init__.py`` 的惰性导出，于是 ``honet.community.random_method`` 从函数变成
 模块，调用时报 ``TypeError: 'module' object is not callable``。把实现下沉到
-``_methods``（模块名不与任何导出名冲突）即可彻底避免这种遮蔽。
+``_methods`` （模块名不与任何导出名冲突）即可彻底避免这种遮蔽。
 """
 
 from __future__ import annotations

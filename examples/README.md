@@ -44,11 +44,13 @@ examples/
 | `honet.Hypergraph` | 自己 `honet.Hypergraph(...)` 构造 | `incidence_matrix` / `degree_sequence` / `clique_projection` |
 | `hypernetx.Hypergraph` | 全部 `honet.build.*` 生成器 | `honet.metrics.*` / `honet.contagion.*` / `honet.community.*` / `honet.attack.*` |
 
-目前**没有**官方的 `hypernetx → honet.Hypergraph` 转换器。需要时手动重建，
-注意去重（hypernetx 允许重复成员集，`honet.Hypergraph` 会拒绝）：
+用 `honet.convert.convert_hypernetx_to_honet` 桥接，它会迁移边名与边级权重，
+并合并 hypernetx 允许的重复成员集（`honet.Hypergraph` 会拒绝重复超边）：
 
 ```python
-honet.Hypergraph(edges=[sorted(H.edges[e]) for e in H.edges])
+from honet.convert import convert_hypernetx_to_honet
+
+hg = convert_hypernetx_to_honet(H)
 ```
 
 **2. `simulate` 与 `random_discrete_sis` 返回的东西不一样**
@@ -123,17 +125,17 @@ python examples/08_case_study_collaboration.py
 ## 重新生成 notebook
 
 Notebook 里的输出是执行产生的真实结果，由
-[`docs/_make_examples.py`](../docs/_make_examples.py) 生成：
+[`tools/_make_examples.py`](../tools/_make_examples.py) 生成：
 
 ```bash
 # 全部重新生成
-python docs/_make_examples.py
+python tools/_make_examples.py
 
 # 只重新生成 04
-python docs/_make_examples.py 04
+python tools/_make_examples.py 04
 ```
 
-生成器读取 [`docs/_example_sources/`](../docs/_example_sources/) 下的 `.py`
+生成器读取 [`tools/_example_sources/`](../tools/_example_sources/) 下的 `.py`
 描述文件（用 `# %%` / `# %% [markdown]` 标记 cell），真实执行每个 cell，
 把输出和 `execution_count` 一起写进 `.ipynb`。
 
@@ -141,7 +143,7 @@ python docs/_make_examples.py 04
 `allow_errors=False`，任何一个 cell 报错都会中断生成——这保证了
 notebook 里记录的 API 用法**真的能跑通**。
 
-要改示例，改 `docs/_example_sources/*.py`，然后重新生成。别直接编辑 `.ipynb`，
+要改示例，改 `tools/_example_sources/*.py`，然后重新生成。别直接编辑 `.ipynb`，
 下次生成会覆盖。
 
 > 注意：`08_case_study_collaboration.py` 是**独立脚本**，不经过生成器，

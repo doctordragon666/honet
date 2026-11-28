@@ -12,8 +12,8 @@
 
 用法::
 
-    python docs/_make_examples.py            # 生成全部
-    python docs/_make_examples.py 01 05      # 只生成指定编号
+    python tools/_make_examples.py            # 生成全部
+    python tools/_make_examples.py 01 05      # 只生成指定编号
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ import nbformat
 from nbclient import NotebookClient
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SOURCE_DIR = ROOT / "docs" / "_example_sources"
+SOURCE_DIR = ROOT / "tools" / "_example_sources"
 OUTPUT_DIR = ROOT / "examples"
 
 MARKDOWN_MARKER = "# %% [markdown]"

@@ -85,7 +85,7 @@ def depth_edge_properties(frame: pd.DataFrame) -> dict[Any, dict[str, Any]]:
     hypernetx 2.4.3 在 DataFrame 构造路径下会把 ``edge_weight_prop_col`` 指定
     的列重命名成 ``weight``，导致 ``H.edges[e].depth`` 变成 ``None``。因此这
     里同时写入 ``weight``（供 ``edge_weight_prop_col="weight"`` 读取，使边权重
-    等于深度）和 ``depth``（供调用方继续按旧名字查询深度），两者取值相同。
+    等于深度）和 ``depth`` （供调用方继续按旧名字查询深度），两者取值相同。
     """
     depths = frame.drop_duplicates("agreement").set_index("agreement")["depth"].to_dict()
     return {edge: {"weight": depth, "depth": depth} for edge, depth in depths.items()}

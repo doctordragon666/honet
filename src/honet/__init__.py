@@ -11,7 +11,7 @@
 Hyperedge     超边：若干结点的无序集合 + 可选标签 + 权重
 Hypergraph    超图容器：构造、增删、度/邻居/子图查询
 Node          结点类型别名（任意 ``Hashable``）
-incidence_matrix    关联矩阵 ``B``（结点 × 超边）
+incidence_matrix    关联矩阵 ``B`` （结点 × 超边）
 degree_sequence     高阶度序列（降序）
 clique_projection   团投影（高阶 → 成对网络）
 HigherOrderNetwork  四类网络形态的抽象基类（不可实例化）

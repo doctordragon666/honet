@@ -60,9 +60,17 @@ uv sync
 uv run pytest
 uv run ruff check .
 uv run ruff format --check .
+# 文档构建（-W：警告即错误，与 CI 一致）
+uv sync --group docs --extra all
+uv run --group docs sphinx-build -b html docs docs/_build/html -W
 ```
 
-结构约定见 `docs/DEVELOPMENT.md`：一个文件一个类或函数、子包只做 re-export、
+结构约定见 `docs/development/index.md`：一个文件一个类或函数、子包只做 re-export、
 依赖方向 `_types → base → base.mixins → 形态基类 → 变体`。
+
+文档是 Sphinx（MyST + furo）源，位于 `docs/`；`examples/` 的 notebook 与
+`docs/_static/` 的架构图由 `tools/` 下的脚本生成，**不要直接编辑产物**。
+改了分析子包的 `__all__` 后，跑 `uv run --group docs python tools/_make_api.py`
+同步 API 参考页。
 
 更完整的机器可读说明见 [`llms.txt`](llms.txt)。

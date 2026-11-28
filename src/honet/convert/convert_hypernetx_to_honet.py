@@ -73,7 +73,7 @@ def convert_hypernetx_to_honet(
         keep_weights: 是否迁移边权重。
         merge_duplicates: 如何处理**成员集合相同**的边。
 
-            * ``True``（默认）：合并为一条，权重相加。重复边各自代表一次独立
+            * ``True`` （默认）：合并为一条，权重相加。重复边各自代表一次独立
               交互，丢弃会让总权重凭空减少，因此累加而不是取其一。
             * ``False``：原样保留为多条边（依靠不同的 ``label`` 区分）。边名
               若恰好也相同，``honet.Hypergraph`` 仍会抛「重复的超边」——那种

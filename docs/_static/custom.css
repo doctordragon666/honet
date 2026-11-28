@@ -1,0 +1,21 @@
+/* honet 文档样式微调：中文正文字号与行距略放宽，代码块横向滚动不折行。 */
+
+.sidebar-brand-text {
+  text-transform: none;
+}
+
+article p,
+article li {
+  line-height: 1.75;
+}
+
+/* 宽表格与宽代码块允许横向滚动，避免撑破正文栏宽 */
+article table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+article div.highlight pre {
+  overflow-x: auto;
+}

@@ -89,6 +89,13 @@ dev = [
     "pytest>=8.3",
     "ruff>=0.9",
 ]
+docs = [
+    "furo>=2025.12.19",
+    "myst-parser>=5.2.0",
+    "sphinx>=9.1.1",
+    "sphinx-autodoc-typehints>=3.17.7",
+    "sphinx-copybutton>=0.5.2",
+]
 
 [build-system]
 requires = ["uv_build>=0.10.11,<0.11.0"]
@@ -106,8 +113,10 @@ target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
 # 不对 Markdown 中的示例代码块做重排：README/PUBLISHING 里的注释是对齐排版，
-# 交给 ruff format 会挤掉空白，反而降低可读性
-extend-exclude = ["*.md", "docs"]
+# 交给 ruff format 会挤掉空白，反而降低可读性。
+# tools/ 是开发期一次性脚本（含带长行的 notebook 描述文件），不参与发布，
+# 也不做 lint：它们按“贴近 notebook 展示效果”排版，重排反而破坏可读性。
+extend-exclude = ["*.md", "docs", "tools"]
 
 [tool.ruff.lint]
 # E/W: pycodestyle  E/F: pyflakes  I: isort  UP: pyupgrade  B: bugbear

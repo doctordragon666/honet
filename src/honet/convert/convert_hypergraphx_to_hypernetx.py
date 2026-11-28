@@ -16,11 +16,11 @@ def convert_hypergraphx_to_hypernetx(hgx_hypergraph: Any) -> Any:
 
     参数:
         hgx_hypergraph: 输入的 ``hypergraphx.Hypergraph`` 对象；类型不符时
-            抛 ``TypeError``（与旧实现一致）。
+            抛 ``TypeError`` （与旧实现一致）。
 
     返回:
-        hypernetx 超图对象，边名为 ``e1``、``e2``…，成员顺序与 HyperGraphX
-        边元组一致。**边权重不迁移**（旧实现同样只迁移结构）。
+        hypernetx 超图对象，边名为 ``e1`` 、``e2``…，成员顺序与 HyperGraphX
+        边元组一致。**边权重不迁移** （旧实现同样只迁移结构）。
 
     示例:
         >>> import hypergraphx as hgx

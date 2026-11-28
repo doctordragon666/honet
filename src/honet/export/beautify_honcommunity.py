@@ -29,7 +29,7 @@ def beautify_honcommunity(nodemap: dict[Any, Any], path: str | Path, ext: str = 
         ext: 扩展名类别，``"csv"``（默认）/ ``"excel"`` / ``"latex"``。
 
     返回:
-        整理后的 DataFrame，两列：``社团编号`` 与 ``国家列表``（成员已排序、
+        整理后的 DataFrame，两列：``社团编号`` 与 `` 国家列表``（成员已排序、
         以逗号连接），按社团编号升序排列。
 
     抛出:

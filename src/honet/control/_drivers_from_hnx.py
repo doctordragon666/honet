@@ -14,7 +14,7 @@ def compute_drivers_from_hypernetx(
     """从 hypernetx 超图（或现成的 HAT 超图）计算驱动结点集合并导出 CSV。
 
     参数:
-        hnx_hg: hypernetx 超图，**或**已构造好的 HAT 有向超图（见 ``HAT_type``）。
+        hnx_hg: hypernetx 超图，**或** 已构造好的 HAT 有向超图（见 ``HAT_type`` ）。
         out_csv: 输出 CSV 路径；``None`` 或空串表示不写文件。
         HAT_type: 为 ``True`` 时表示 ``hnx_hg`` 已经是 HAT 超图，跳过转换。
 

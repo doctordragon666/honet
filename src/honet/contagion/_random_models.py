@@ -63,7 +63,7 @@ def _initial_state(
 
 
 def _degrees(H: Any) -> dict[Any, int]:
-    """返回 ``{结点: 成对邻居数}``（旧实现用邻居个数，不是超边度）。
+    """返回 ``{结点: 成对邻居数}`` （旧实现用邻居个数，不是超边度）。
 
     邻居表来自共享拓扑索引，多个模型共用一次构建结果，避免每个结点都
     重新遍历所属超边。
@@ -114,7 +114,7 @@ def simulate_random_discrete(
         **args: 兼容旧签名，未使用。
 
     返回:
-        ``(t, S, I)``（SIS）或 ``(t, S, I, R)``（SIR），均为普通 Python 列表。
+        ``(t, S, I)`` （SIS）或 ``(t, S, I, R)`` （SIR），均为普通 Python 列表。
     """
     np = require("numpy")
     spec = _resolve(model)
@@ -197,7 +197,7 @@ def simulate_random_gillespie(
         **args: 兼容旧签名，未使用。
 
     返回:
-        ``(t, S, I)``（SIS）或 ``(t, S, I, R)``（SIR），均为普通 Python 列表。
+        ``(t, S, I)`` （SIS）或 ``(t, S, I, R)`` （SIR），均为普通 Python 列表。
     """
     np = require("numpy")
     spec = _resolve(model)

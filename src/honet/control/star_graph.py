@@ -18,7 +18,7 @@ def star_graph(HG: Any) -> Any:
         HG: HAT 超图对象。
 
     返回:
-        ``networkx.DiGraph``（有向超图）或 ``networkx.Graph``（无向超图）。
+        ``networkx.DiGraph`` （有向超图）或 ``networkx.Graph`` （无向超图）。
         结点名 ``n<i>`` 是系统结点（属性 ``bipartite=0``），``e<j>`` 是超边结点
         （属性 ``bipartite=1``，``j`` 为边表行号）。
 

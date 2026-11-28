@@ -9,7 +9,7 @@
 ============================ ===========================================
 1.x 写法                      2.4.3 中的替代
 ============================ ===========================================
-``H.nodes.degree``             ``H.degree()``（标量或 dict）
+``H.nodes.degree``             ``H.degree()`` （标量或 dict）
 ``H.edges.members()``          ``H.edges.incidence_dict`` / ``H.edges[e]``
 ``H.edges.size``               用 ``len(H.edges[e])`` 逐个算
 ``H.nodes.neighbors``          经关联关系自行展开
@@ -58,7 +58,7 @@ def node_degrees(H: Any) -> dict[Any, int]:
 def edge_members(H: Any) -> dict[Any, list[Any]]:
     """返回 ``{超边: 成员列表}``，顺序尽量保持插入顺序。
 
-    优先走 ``H.edges.incidence_dict``（一次性字典，近 0ms）；逐边访问
+    优先走 ``H.edges.incidence_dict`` （一次性字典，近 0ms）；逐边访问
     ``H.edges[e]`` 每次都会重建成员列表，只在没有 incidence_dict 时使用。
     """
     try:

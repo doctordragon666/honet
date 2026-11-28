@@ -5,7 +5,7 @@
 中的两个 mixin 提供，四种形态分别位于 ``honet.simplicial`` / ``honet.hypergraph`` /
 ``honet.multilayer`` / ``honet.temporal``。
 
-被以下文件使用：``src/honet/base/__init__.py``（re-export）、各形态的
+被以下文件使用：``src/honet/base/__init__.py`` （re-export）、各形态的
 ``network.py``（继承）、``tests/test_networks.py``。
 """
 

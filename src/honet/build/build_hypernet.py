@@ -21,7 +21,7 @@ def build_hypernet(
     """构建一张超图，可选按年份筛选并可选按出口额加权。
 
     参数:
-        e: 超边表，必须含 ``agreement``（超边标识）、``country``（成员）、
+        e: 超边表，必须含 ``agreement`` （超边标识）、``country`` （成员）、
             ``depth``（超边深度）三列；``i`` 不为 ``None`` 时还必须含 ``year``。
         w: 权重表，含 ``reporterISO`` / ``primaryValue``，以及 ``i`` 不为
             ``None`` 时用于筛选的 ``period`` 列。为 ``None`` 时不加权。
@@ -45,13 +45,13 @@ def build_hypernet(
         **与旧实现的差异**：旧代码用 ``cell_weight_col=None`` 表示“不加权”，
         而 hypernetx 2.4.3 在 DataFrame 构造路径下收到 ``cell_weight_col=None``
         会直接抛 ``KeyError: ['weight'] not in index``；本实现在不加权时改为
-        **不传**该参数。另外旧代码用 ``edge_weight_prop_col='depth'`` 传深度，
+        **不传** 该参数。另外旧代码用 ``edge_weight_prop_col='depth'`` 传深度，
         2.4.3 会把该列改名成 ``weight``、使 ``H.edges[e].depth`` 变为 ``None``；
         本实现改为把深度同时写进 ``weight`` 与 ``depth`` 两个属性，因此边权重
         仍等于深度，且深度可按原名查询。
 
         旧实现在**给定年份**时把深度挂成超边属性（边权重 = 深度），**不给定
-        年份**时则没有挂，边权重一律取默认值 1。这一分支不对称属于旧实现原样
+        年份** 时则没有挂，边权重一律取默认值 1。这一分支不对称属于旧实现原样
         保留的行为，本实现照搬，未作“修正”。
 
     示例:

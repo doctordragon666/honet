@@ -32,7 +32,7 @@ def _fast_propagate(
 
     注意:
         ``already_active`` 只用于去重，本函数**不会**把传播过程中激活的超边写回
-        调用方的 ``already_active``（旧实现即如此）；重复处理同一超边是幂等的，
+        调用方的 ``already_active`` （旧实现即如此）；重复处理同一超边是幂等的，
         不影响结果。
     """
     result = set(accessible)

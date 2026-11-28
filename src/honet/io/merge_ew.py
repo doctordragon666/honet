@@ -31,9 +31,9 @@ def merge_ew(e: pd.DataFrame, w: pd.DataFrame) -> pd.DataFrame:
     """合并超图边数据和权重数据。
 
     参数:
-        e: 超边数据，必须含 ``agreement``（超边标识）、``country``（成员）
-            与 ``depth``（超边深度，取每组第一行）三列。
-        w: 权重数据，必须含 ``reporterISO``（国家）与 ``primaryValue``（数值）。
+        e: 超边数据，必须含 ``agreement`` （超边标识）、``country`` （成员）
+            与 ``depth`` （超边深度，取每组第一行）三列。
+        w: 权重数据，必须含 ``reporterISO`` （国家）与 ``primaryValue`` （数值）。
 
     返回:
         长表 DataFrame，列为 ``agreement`` / ``country`` / ``weight`` / ``depth``，

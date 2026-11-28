@@ -46,7 +46,7 @@ def _sub_draw_sir_community(
         **与旧实现的差异**：旧代码在此处的解包写成 ``_, _, I_arr, _ = result``
         对四元组做三元组解包，一旦真的传入 ``(t, S, I, R)`` 会抛
         ``ValueError`` 而不是给出提示，本实现改为统一抛带说明的
-        ``RuntimeError``（与 SIS 版本一致）。
+        ``RuntimeError`` （与 SIS 版本一致）。
     """
     apply_style()
 

@@ -1,6 +1,6 @@
 """绘制多组社团划分下的 SIS 感染曲线（2×2 面板）。
 
-对应旧库 ``hypertrade.draw.draw_sis_conmmunity``（旧名拼写有误）。新名
+对应旧库 ``hypertrade.draw.draw_sis_conmmunity`` （旧名拼写有误）。新名
 :func:`honet.plot.draw_sis_community`，旧名保留为别名。
 """
 
@@ -34,7 +34,7 @@ def draw_sis_community(
     """绘制多套社团划分下的 SIS 感染人数曲线，每套划分占一个面板。
 
     参数:
-        result: ``{面板序号: 事件字典}``（也可传列表）。事件字典形如
+        result: ``{面板序号: 事件字典}`` （也可传列表）。事件字典形如
             ``{时间: [('I', 结点, 超边), ...]}``，即
             ``hon_sis(..., return_all_data=True)`` 的返回值。
         communities: 每套社团划分，``communities[i]`` 与 ``result[i]`` 配对。

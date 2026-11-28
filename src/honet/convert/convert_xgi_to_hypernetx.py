@@ -24,7 +24,7 @@ def convert_xgi_to_hypernetx(xgi_hg: Any) -> Any:
         xgi_hg: 输入的 XGI 超图对象。
 
     返回:
-        hypernetx 超图对象。**XGI 的边权重不迁移**（旧实现同样只迁移结构）；
+        hypernetx 超图对象。**XGI 的边权重不迁移** （旧实现同样只迁移结构）；
         需要权重时请用 ``edge_properties`` 显式挂载。
 
     兼容性:

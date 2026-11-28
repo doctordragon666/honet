@@ -8,7 +8,7 @@
 ## 分区说明
 
 本文件按**发布通道**分四个区，与版本号形态一一对应。发布流程见
-[`docs/PUBLISHING.md`](docs/PUBLISHING.md)。
+[`docs/development/publishing.md`](docs/development/publishing.md)。
 
 | 分区 | 版本号形态 | 含义 | 发布到 |
 | --- | --- | --- | --- |
@@ -32,6 +32,28 @@
 
 ### Added
 
+- **Sphinx 文档站 + GitHub Pages 自动部署**
+  - `docs/` 改为 Sphinx（MyST + furo）源目录，分「使用指南 / API 参考 / 开发文档」三部分；
+    原先散落的 `ARCHITECTURE.md` / `DEVELOPMENT.md` / `PERFORMANCE.md` / `CONTAGION.md` /
+    `CONTROL.md` / `PUBLISHING.md` 迁入 `docs/development/`，内容保留。
+  - 新增逐符号 API 参考（`autodoc` 从源码 docstring 生成），页面由
+    `tools/_make_api.py` 读取各子包 `__all__` 生成，避免手写清单漂移。
+  - 新增 `.github/workflows/docs.yml`：推送 `main` 自动构建并部署到
+    <https://doctordragon666.github.io/honet/>。构建用 `-W`（警告即错误）。
+  - 新增 `docs` 依赖组（sphinx / myst-parser / furo / sphinx-autodoc-typehints /
+    sphinx-copybutton），不影响发布到 PyPI 的运行依赖。
+- **`tools/` 目录**：`docs/` 里的一次性探测脚本已删除，仍在用的生成器迁入 `tools/`：
+  `_make_examples.py`（→ `examples/*.ipynb`）、`_make_architecture.py`
+  （→ `docs/_static/architecture.{svg,png}`）、`_example_sources/`、`_make_api.py`。
+
+### Changed
+
+- `docs/` 下的架构图移到 `docs/_static/`，架构图与 notebook 生成器路径随之更新。
+- `ruff` 的 `extend-exclude` 增加 `tools`（开发期脚本按展示效果排版，不做 lint）。
+- 修正若干 docstring 的行内标记：闭定界符（``` `` ``` / `**`）后紧跟全角括号或汉字时
+  docutils 不识别结束标记，已在中间补空格（不影响渲染文本，只修语法）。
+- `generate_tau` 的 `type` 取值表列宽不足导致 docutils 报「Malformed table」，已加宽。
+
 - **`convert` 新增 `convert_hypernetx_to_honet`：hypernetx 超图 → `honet.Hypergraph`**
   - 此前两个「同名但不同物」的超图类型之间没有官方通道，使用者只能手写
     `honet.Hypergraph(edges=[sorted(H.edges[e]) for e in H.edges])`，而这个朴素写法
@@ -53,6 +75,34 @@
     （返回 `LTVControllabilityResult`：Gramian、秩、奇异值、是否可控、条件数）。
     LTV 系统的可控性由 Gramian 的秩决定，常数系统的 Kalman 秩判据对其不适用；
     测试保证两者在常数情形下结论一致。
+
+- **`honet.metrics` 新增 `calc_information_gain`：高阶网络相对成对（投影）网络的信息增益**
+  - 公式参考《基于引文大数据的高阶网络建模及信息增益比较研究》（李佳旭等，
+    系统科学与数学 41(10), 2021）：把低阶模型的熵减去高阶模型的熵，差值即高阶
+    表示带来的信息增益。本实现把「低阶模型」取为该超图的**团投影成对网络**、
+    「高阶模型」取为超图本身，两侧共用同一套度分布熵公式：
+    `G = S_pair − S_high`，高阶侧用结点超度、成对侧用团投影的邻居数。
+  - `G > 0` 表示投影把信息摊得更均匀（一阶模型存在高阶信息损失）；`G = 0`
+    表示两者多样性相同（如全部超边都是 2 元边时投影即原网络）；`G < 0` 表示
+    投影反而更集中。
+  - `detail=True` 同时返回 `pairwise_entropy` / `hypergraph_entropy` /
+    `information_gain`，便于核对两侧熵值。结果按结构指纹缓存。
+  - 该指标与可约性同放在全局指标模块中。补 7 个单元测试。
+- **`metrics` 新增 `temporal_closeness_centrality`：时序网络结点重要性**
+  - 静态中心性假设信息可沿任意边传播，但时序网络里只有当后续事件时间戳
+    **严格更晚**时信息才传得过去。本函数只承认这种「时间尊重路径」，按其
+    跳数计算调和接近中心性：`C(v) = Σ_{u≠v} 1/d_t(v,u) / (n−1)`。
+  - 参考了 Kim & Anderson（*Phys. Rev. E* 85, 026107, 2012）的「时间有序图」
+    框架。没有直接移植现有实现：GitHub 上 `juancamilog/temporal_centrality`
+    是 Python 2 代码，且作者在 README 中自述其介数归一化与论文不一致；
+    `networkx-temporal` 无时序介数/接近中心性，`pathpyG` 的时序接近中心性
+    以 `delta` 时间窗定义。本实现按**跳数**而非绝对时间计时，因此结果与
+    时间戳的物理单位（年 / 秒 / 帧）无关。
+  - 强制类型：只接受 `honet.TemporalNetwork` 及其 `W` / `D` / `WD` 变体，
+    传一次性超图或普通对象抛 `TypeError`——时序语义与静态语义不同，
+    静默接受会让结果产生误读。
+  - 支持 `max_hops` 限制可见跳数（对应时间窗思想），非法值抛 `ValueError`。
+    取值恒在 `[0, 1]`，不可达结点贡献 0 而不拉垮其他结点。补 12 个单元测试。
 - **重写 `examples/`，按用途分为两部分**
   - 第一部分：7 个 API 示例 notebook（`01_hypergraph_basics` / `02_metrics` /
     `03_generators_convert` / `04_contagion` / `05_control` / `06_community_attack` /
@@ -70,7 +120,36 @@
 - 新增 `docs/_make_examples.py`：把带 `# %%` 标记的 `.py` 描述文件执行成 notebook，
   输出与 `execution_count` 一并写入，避免手写 notebook 输出过时。
 
+### Changed
+
+- **`honet.metrics` 实现按粒度收敛为三个模块**（公开 API 与函数签名全部不变）
+  - 原先 14 个指标各占一个文件（`calc_entropy.py` / `weighted_degree.py` / …），
+    文件名与公开函数名相同，导致「子模块 import 会遮蔽同名包属性」这一隐患，
+    必须靠包类型的 `__getattribute__` 拦截补救。
+  - 现按返回粒度归并为：`nodemetrics.py`（结点级 5 个）、`edgemetrics.py`
+    （超边级 1 个）、`globalmetrics.py`（全局级 9 个，含新增的信息增益）。
+    辅助模块 `_assortativity.py` / `_reuse.py` 保留不动。
+  - 实现模块名与公开函数名不再相同，遮蔽隐患随之消失，`__init__.py` 里的
+    `_MetricsPackage.__getattribute__` 补丁已删除。子包内部可直接
+    `from honet.metrics.nodemetrics import clustering_coefficient`。
+  - 兼容性：`honet.metrics.<name>` 的 15 个公开符号、参数与返回值完全不变；
+    只有直接 import 旧实现模块路径（如
+    `from honet.metrics.calc_entropy import calc_entropy`）的代码需要改为从
+    `honet.metrics` 顶层或新的三个模块导入。
+  - `honet.attack` 的两处模块级 import 与 `execute_attack` 的度量调用同步改到新路径。
+
 ### Fixed
+
+- **`_cache` 对时序网络完全失效，且一级校验会误判命中**
+  - `_cache.structure` 通过 `H.edges.incidence_dict` 取成员总数，而
+    `TemporalNetwork.edges` 是元组，没有该属性，异常被 `except Exception`
+    吞掉后返回 `None`，导致**时序网络的指标结果从不缓存**（每次重算）。
+  - 更严重的是修好取数之后暴露的隐患：结构特征只有
+    `(事件数, 结点数, 成员总数)` 三个计数，无法区分「同一批事件换个时间顺序」
+    的两个时序网络，而时序指标的结果恰恰由时间顺序决定——那样缓存会把
+    另一个网络的答案当成自己的返回。现在时序对象（带 `times` 属性）会把
+    逐事件的 `(时刻, 成员)` 时间线纳入结构特征，顺序敏感。
+  - 非时序对象的结构特征保持不变，不影响既有缓存行为。
 
 - **`initial_infecteds` 无法单独使用**：`random_discrete_sis` / `random_discrete_sir` /
   `random_gillespie_sir` / `random_gillespie_sis` 四个封装函数无条件把 `rho=None`

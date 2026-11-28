@@ -211,7 +211,7 @@ class SimplicialComplexNetwork(HigherOrderNetwork):
 
 
 class SimplicialComplexNetworkW(WeightedMixin, SimplicialComplexNetwork):
-    """加权单纯复形：每个极大面带权重 ``weight > 0``（默认 1.0）。"""
+    """加权单纯复形：每个极大面带权重 ``weight > 0`` （默认 1.0）。"""
 
 
 class SimplicialComplexNetworkD(DirectedMixin, SimplicialComplexNetwork):

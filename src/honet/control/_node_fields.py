@@ -19,7 +19,7 @@ def add_node_fields(HG_local: Any) -> Any:
         HG_local: HAT 超图对象，结点表需含 ``Nodes`` 列。
 
     返回:
-        传入的同一个 ``HG_local``（原地修改，旧实现也是这个语义）。
+        传入的同一个 ``HG_local`` （原地修改，旧实现也是这个语义）。
 
     注意:
         三列的取值都是「超边行号列表」，与 ``HG_local.edges.index`` 一致。

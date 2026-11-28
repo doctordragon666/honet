@@ -22,6 +22,10 @@ __pycache__/
 .coverage.*
 htmlcov/
 
+# Sphinx 构建产物（CI 会重新生成并部署到 Pages，不入库）
+docs/_build/
+docs/.doctrees/
+
 # 编辑器与系统
 .idea/
 .vscode/

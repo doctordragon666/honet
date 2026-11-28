@@ -3,9 +3,9 @@
 这两个指标回答的是「**哪些结点是好的控制入口**」，与拓扑层的 dilation 分析
 互补：后者看结构可达性，这里看能量代价与模态可驱动性。
 
-* **平均可控性**（average controllability）：把某个结点作为唯一控制入口时，
+* **平均可控性** （average controllability）：把某个结点作为唯一控制入口时，
   驱动系统到随机目标所需的平均能量。等于无限时域 Gramian 的对角元。
-* **模态可控性**（modal controllability）：某结点驱动系统「难控模态」的能力，
+* **模态可控性** （modal controllability）：某结点驱动系统「难控模态」的能力，
   对每个模态按 ``1 - λᵢ²`` 加权。
 
 参考: Gu, Pasqualetti, Cieslak, Telesford, Yu, Kahn, Medaglia, Vettel,

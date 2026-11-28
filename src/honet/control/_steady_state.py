@@ -28,7 +28,7 @@ def matrix_normalization(A: Any, system: str, c: float = 1.0) -> Any:
 
     返回:
         归一化后的矩阵。离散时间：``A / (c + λmax)``；
-        连续时间：``A / (c + λmax) - I``（保证稳定）。
+        连续时间：``A / (c + λmax) - I`` （保证稳定）。
 
     抛出:
         ValueError: ``system`` 取值非法。
@@ -61,8 +61,8 @@ def is_stable(A: Any, system: str) -> bool:
 
     参数:
         A: 系统矩阵。
-        system: ``"continuous"``（要求全部特征值实部 < 0）或
-            ``"discrete"``（要求全部特征值模 < 1）。
+        system: ``"continuous"`` （要求全部特征值实部 < 0）或
+            ``"discrete"`` （要求全部特征值模 < 1）。
 
     返回:
         稳定返回 ``True``。

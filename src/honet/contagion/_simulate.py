@@ -73,9 +73,9 @@ def simulate(
         seed: 随机种子；``None`` 表示不播种。
         return_all_data: 是否返回完整迁移数据。
         control_nodes: 控制结点；仅 ``Discrete`` 方法使用，等价于
-            ``initial_recovereds``（保留旧参数名）。
-        rng: 显式随机源。传入 ``random.Random``（离散引擎）或
-            ``numpy.random.Generator``（随机模型），可避免读写全局随机状态，
+            ``initial_recovereds`` （保留旧参数名）。
+        rng: 显式随机源。传入 ``random.Random`` （离散引擎）或
+            ``numpy.random.Generator`` （随机模型），可避免读写全局随机状态，
             从而并行/嵌套运行互不干扰的模拟。为 ``None`` 时沿用 ``seed``
             设置的全局状态（旧行为）。
 
@@ -84,7 +84,7 @@ def simulate(
         返回四个，序列顺序由模型规格的 ``output_states()`` 决定。
 
     抛出:
-        ValueError: ``method`` 非法，或该模型不支持所选的 ``method``。
+        ValueError: ``method`` 非法，或该模型不支持所选的 ``method`` 。
 
     示例:
         >>> import hypernetx as hnx

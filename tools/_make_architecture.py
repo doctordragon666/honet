@@ -5,8 +5,8 @@
 因此框一定能容纳文字。
 
 产出：
-1. docs/architecture.svg —— 矢量图，适合文档
-2. docs/architecture.png —— 位图，适合预览
+1. docs/_static/architecture.svg —— 矢量图，适合文档
+2. docs/_static/architecture.png —— 位图，适合预览
 
 布局：从左到右三层 —— 分析层（10 子包）→ 适配层（3 个内部模块）→ 核心层（零依赖）。
 节点信息取自仓库真实结构（子包文件数、导出符号数、所属 extras）。
@@ -24,7 +24,7 @@ import matplotlib.patches as mpatches  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-DOCS = ROOT / "docs"
+DOCS = ROOT / "docs" / "_static"
 
 # 核心层：零第三方依赖，`import honet` 只会加载这里
 CORE = [

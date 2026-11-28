@@ -63,8 +63,10 @@ hypernetx 的访问接口有隐藏成本：
 | `clustering_coefficient` | 索引 | 复杂度从 O(结点×超边) 降到 O(Σ 成员数²) |
 | `excess_average_degree` | 索引 | 邻居表按需填充并复用 |
 | `calc_entropy` | 索引 | 直接用度序列，不调 `dist_stats` |
+| `calc_information_gain` | 索引 | 两侧熵共用同一公式，投影度由邻居表直接得到 |
 | `get_avg_degree_by_edge_size` | 索引 | 按超边规模分桶，不构造稠密矩阵 |
 | `betweenness_centrality` | 索引 + 缓存 | 二部图只建一次；支持 `samples` 近似 |
+| `temporal_closeness_centrality` | 缓存 | 逐源按时间推进 BFS，`O(|V|·|E|)`；时间线纳入结构特征 |
 | `calc_natural_connectivity` | 缓存 | 特征值分解最贵，结果复用 |
 | `calc_clustering_coefficient_g` | 复用局部 | 直接对局部结果取均值 |
 | `calc_reducibility` | 缓存 | 跨格式转换结果也缓存 |
@@ -84,7 +86,10 @@ hypernetx 的访问接口有隐藏成本：
 | `convert_hypernetx_to_xgi` | 17.02 ms |
 | `get_hyperedge_weights` | 12.66 ms |
 
-复现：`uv run python docs/_bench_convert.py`
+复现方式：下面的收益表由一次性基准脚本测得，脚本未随仓库保留；表中的数值
+只用于说明优化量级，**不要当作当前版本的性能承诺**。要复测请按同一规模
+（200 结点 / 500 超边 / 每条 4 成员）自行计时，冷启动前先调用
+`honet._cache.clear()` 清空缓存。
 
 ## 5. 实测收益
 
@@ -100,12 +105,8 @@ hypernetx 的访问接口有隐藏成本：
 | `calc_entropy` | 1.82 ms | 0.03 ms | 55× |
 | `calc_natural_connectivity` | 4.65 ms | 0.04 ms | 122× |
 
-复现：
-
-```bash
-uv run python docs/bench_metrics.py
-uv run python docs/_verify_shared_index.py
-```
+上表为重构完成时的一次性实测记录，脚本未随仓库保留（同类基准脚本已清理，
+避免 `docs/` 混入临时文件）。数值反映优化量级，不是当前版本的性能承诺。
 
 ## 6. 什么时候不该依赖缓存
 

@@ -11,7 +11,7 @@
 * ``memberships``：``{结点: 所属超边元组}``
 * ``degrees``：``{结点: 度}``，即成员数之和
 * ``sizes``：``{超边: 成员数}``
-* ``neighbors``：``{结点: 邻居结点 frozenset}``（延迟构建，按需填充）
+* ``neighbors`` ：``{结点: 邻居结点 frozenset}`` （延迟构建，按需填充）
 """
 
 from __future__ import annotations

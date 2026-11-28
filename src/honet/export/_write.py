@@ -4,7 +4,7 @@
 写文件」的逻辑，集中放在这里，避免两处重复（与 ``honet.io._read`` 的写法对称）。
 
 公开模块之间刻意不互相 import：包内子模块一旦被 import，import 机制会把
-**模块对象**写回 ``honet.export`` 的同名属性，从而遮蔽惰性导出的同名函数。
+**模块对象** 写回 ``honet.export`` 的同名属性，从而遮蔽惰性导出的同名函数。
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def write_frame(
 
     抛出:
         ValueError: ``ext`` 不在支持范围内。**与旧实现的差异**：旧代码遇到
-            未知 ``ext`` 时静默返回 ``None``（既不报错也不写文件），本实现改为
+            未知 ``ext`` 时静默返回 ``None`` （既不报错也不写文件），本实现改为
             抛异常，避免“以为导出成功、实际没有文件”。
         ImportError: 未安装 pandas，或导出 Excel 时缺少 ``openpyxl`` 引擎。
     """

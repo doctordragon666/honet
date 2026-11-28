@@ -23,7 +23,7 @@ def convert_hypernetx_to_nxgraph(hnx_hypergraph: Any) -> Any:
         hnx_hypergraph: 输入的 hypernetx 超图对象；类型不符时抛 ``TypeError``。
 
     返回:
-        ``networkx.Graph``（无向、无权）。重复的结点对由 NetworkX 自动去重，
+        ``networkx.Graph`` （无向、无权）。重复的结点对由 NetworkX 自动去重，
         因此**超边权重与重数信息会丢失**。
 
     示例:

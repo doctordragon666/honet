@@ -45,7 +45,7 @@ def resolve_tau_at(tau: Any, time: float) -> dict[int, float]:
 
     * ``{大小: 感染率}`` 常数表——原样返回；
     * ``Callable[[float], dict[int, float]]``——用 ``time`` 求值；
-    * 数值常数——包装成 ``{2: 值}``（与「只有成对交互」的直觉一致）。
+    * 数值常数——包装成 ``{2: 值}`` （与「只有成对交互」的直觉一致）。
 
     参数:
         tau: 感染率参数。
@@ -67,7 +67,7 @@ def resolve_tau_at(tau: Any, time: float) -> dict[int, float]:
 
 
 def beta_from_tau(tau_table: dict[int, float]) -> float:
-    """把 ``tau`` 表压成单个 ``beta``（取各阶平均值）。
+    """把 ``tau`` 表压成单个 ``beta`` （取各阶平均值）。
 
     与旧实现一致：旧代码在循环外做 ``np.mean(list(tau.values()))``。
     """

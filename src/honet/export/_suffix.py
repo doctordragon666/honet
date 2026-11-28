@@ -3,7 +3,7 @@
 旧库 hypertrade 用 ``path + '.csv'`` 这种字符串拼接，传入 ``pathlib.Path``
 会直接抛 ``TypeError``。这里统一用 f-string 拼接后交给 :class:`pathlib.Path`，
 因此 ``str`` 与 ``Path`` 两种入参都能用；同时把「未知扩展名」统一成
-``ValueError``（旧实现在导出侧是静默什么都不做，在读取侧会抛
+``ValueError`` （旧实现在导出侧是静默什么都不做，在读取侧会抛
 ``UnboundLocalError``，两种都不便于调用方排查）。
 
 本模块是实现细节，不导出到 ``honet.export`` 的命名空间。

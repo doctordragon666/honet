@@ -8,7 +8,7 @@
 3. 所有查询方法的返回值为不可变类型（``tuple`` / ``frozenset``），
    调用方无法通过返回值篡改内部状态。
 
-被以下文件使用：``src/honet/core/__init__.py``（re-export）、
+被以下文件使用：``src/honet/core/__init__.py`` （re-export）、
 ``src/honet/utils/*``（度量函数入参）、``tests/test_core.py``。
 """
 

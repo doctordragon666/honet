@@ -5,7 +5,7 @@
 
 依赖分布：
 
-* 其余转换函数只需要 ``honet[analysis]``（numpy / pandas / hypernetx /
+* 其余转换函数只需要 ``honet[analysis]`` （numpy / pandas / hypernetx /
   networkx），XGI 与 HyperGraphX 互转额外需要 ``xgi``、``hypergraphx``；
 * :func:`hypernetx_to_hat_directed` 依赖 HypergraphAnalysisToolbox（导入名
   ``HAT``），单独挂在 ``hat`` 组下，缺依赖时的提示会指向 ``honet[hat]``。

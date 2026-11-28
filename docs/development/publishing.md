@@ -135,7 +135,9 @@ feature/*             ●──●                   功能分支，PR 回 devel
 twine 的 `--repository <name>` 只能引用 `~/.pypirc` 里登记过的名字；
 不写 `--repository` 时默认用 `pypi`。Windows 路径为 `%USERPROFILE%\.pypirc`。
 
-仓库内提供了模板 [`.pypirc.example`](../.pypirc.example)，复制并填写：
+仓库内提供了模板
+[`.pypirc.example`](https://github.com/doctordragon666/honet/blob/main/.pypirc.example)，
+复制并填写：
 
 ```ini
 [distutils]
@@ -363,7 +365,7 @@ uv run --with "honet==0.2.0" python -c "import honet; print(honet.__version__)"
 ## 10. GitHub Actions 定时发布（可选）
 
 除本地手动 twine 上传外，仓库还提供定时发布工作流
-[`.github/workflows/publish-pypi.yml`](../.github/workflows/publish-pypi.yml)：
+[`publish-pypi.yml`](https://github.com/doctordragon666/honet/blob/main/.github/workflows/publish-pypi.yml)：
 
 - **触发**：每周一 03:00 UTC（北京时间 11:00）自动运行；也可在
   *Actions → Scheduled PyPI Release → Run workflow* 手动触发；
