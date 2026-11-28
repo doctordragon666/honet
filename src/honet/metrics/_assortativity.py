@@ -5,9 +5,9 @@
 对每条超边取超度最大与第二大的两个结点，用它们「超度平均秩」的皮尔逊
 相关系数作为该超图的同配系数。
 
-本模块只接受 hypernetx 超图，度与成员关系全部走 ``honet._hnx`` 的兼容函数；
-``calc_assortativity`` 用它既算观测值、也算零模型样本（零模型先转成
-hypernetx 超图）。
+本模块只接受 hypernetx 超图，度与成员关系全部走 ``honet._topology`` 的
+拓扑索引；``calc_assortativity`` 用它既算观测值、也算零模型样本（零模型先
+转成 hypernetx 超图）。
 """
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ def assortativity_rank_correlation(H: Any) -> float:
 
     返回:
         皮尔逊相关系数 ``float``；结点少于 2 个、成员数 ≥ 2 的超边少于 2 条，
-        或任一侧秩序列方差为 0 时返回 ``0.0``（与旧实现约定一致）。
+        或任一侧秩序列方差为 0 时返回 ``0.0`` （与旧实现约定一致）。
     """
     np = require("numpy")
 

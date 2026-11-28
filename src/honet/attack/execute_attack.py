@@ -36,12 +36,13 @@ def _natural_connectivity(H: Any) -> float:
     返回:
         自然连通度；结点为空、或无法构造邻接矩阵时返回 ``0.0``。
     """
-    from honet.metrics._reuse import package_function
+    # 延迟导入：honet.metrics 是惰性子包，import honet.attack 不应连带拉起它
+    from honet.metrics.globalmetrics import calc_natural_connectivity
 
     if not H.nodes:
         return 0.0
     try:
-        return float(package_function("honet.metrics", "calc_natural_connectivity")(H))
+        return float(calc_natural_connectivity(H))
     except ValueError:
         # 只剩孤立结点时 2.x 的 adjacency_matrix 会因空索引抛 ValueError
         return 0.0
@@ -70,7 +71,7 @@ def execute_attack(
     返回:
         ``{策略名称: {"steps": [...], "nc_vals": [...]}}``。
 
-        * ``nc_vals`` 是度量值序列，首项固定为 ``1.0``（旧实现约定的
+        * ``nc_vals`` 是度量值序列，首项固定为 ``1.0`` （旧实现约定的
           「未攻击」基准位，即使传了 ``func`` 也不调用它）；
         * ``steps`` 是与 ``nc_vals`` 等长的「已移除比例」序列，首项为 ``0.0``，
           之后为 ``(原始数量 - 当前数量) / 原始数量``。

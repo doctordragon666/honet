@@ -14,8 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from honet._hnx import edge_sizes, node_degrees
-from honet.metrics.clustering_coefficient import clustering_coefficient
-from honet.metrics.excess_average_degree import excess_average_degree
+from honet.metrics.nodemetrics import clustering_coefficient, excess_average_degree
 
 #: 支持的排序依据（与 ``target`` 参数取值一致）
 _STRATEGIES = ("node", "edge", "excess", "cluster")

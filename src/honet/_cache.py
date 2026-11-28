@@ -9,7 +9,7 @@
 2. **为什么用 id 作键**：hypernetx 的 ``Hypergraph`` 未实现 ``__hash__``
    （不可哈希），无法直接作为 ``WeakKeyDictionary`` 的键。这里用 ``id(H)``
    作键，并注册 ``weakref.finalize`` 在对象回收时删除对应条目，因此不会泄漏。
-3. **两级校验**（性能关键）：
+3. **两级校验** （性能关键）：
    - **一级：结构特征**。只取「超边数 + 结点数 + 成员总数」三个整数，代价
      与超边数成正比但极轻（不排序、不做字符串拼接）。结构没变就直接返回，
      这是命中缓存的常见路径。
@@ -56,7 +56,7 @@ def _watch(H: Any) -> int:
     return key
 
 
-def structure(H: Any) -> tuple[int, int, int] | None:
+def structure(H: Any) -> tuple[Any, ...] | None:
     """返回轻量结构特征 ``(超边数, 结点数, 成员总数)``。
 
     这是缓存校验的第一级：不排序、不拼字符串，只做整数累加。任何增删边、
@@ -65,6 +65,10 @@ def structure(H: Any) -> tuple[int, int, int] | None:
     性能要点：成员总数优先用 ``H.edges.incidence_dict`` 求和——``H.edges[e]``
     每次访问都会重建成员列表，逐边访问在 500 条边上约 4ms，而 incidence_dict
     是一次性字典，接近 0ms。
+
+    时序网络（带 ``times`` 属性）额外把时间线纳入特征。仅靠三个计数无法区分
+    「同一批事件换个时间顺序」的两个时序网络，而时序指标的结果恰恰由时间顺序
+    决定，那样会让缓存返回另一个网络的答案。
     """
     try:
         n_edges = len(H.edges)
@@ -72,9 +76,24 @@ def structure(H: Any) -> tuple[int, int, int] | None:
         raw = H.edges.incidence_dict
         if not isinstance(raw, dict):
             raw = raw()
-        return (n_edges, n_nodes, sum(len(mem) for mem in raw.values()))
+        total = sum(len(mem) for mem in raw.values())
     except Exception:  # noqa: BLE001 - 非常规对象退回「每次都算指纹」
-        return None
+        try:
+            n_edges = len(H.edges)
+            n_nodes = len(H.nodes)
+            total = sum(len(mem) for mem in H.edges)
+        except Exception:  # noqa: BLE001
+            return None
+
+    times = getattr(H, "times", None)
+    if times is None:
+        return (n_edges, n_nodes, total)
+    # 逐事件记录 (时刻, 成员规范形式)，顺序敏感
+    timeline = tuple(
+        (timestamp, tuple(sorted(map(repr, members))))
+        for timestamp, members in zip(times, H.edges, strict=True)
+    )
+    return (n_edges, n_nodes, total, timeline)
 
 
 def fingerprint(H: Any) -> str:

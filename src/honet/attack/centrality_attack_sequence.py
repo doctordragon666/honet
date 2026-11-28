@@ -15,8 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from honet.metrics.betweenness_centrality import betweenness_centrality
-from honet.metrics.eigenvector_centrality import eigenvector_centrality
+from honet.metrics.nodemetrics import betweenness_centrality, eigenvector_centrality
 
 #: 支持的中心性指标
 _METRICS = ("betweenness", "eigenvector")

@@ -115,7 +115,7 @@ class TestCentralityAttackSequence:
 
     def test_eigenvector_covers_all_nodes(self, hg: hnx.Hypergraph) -> None:
         """特征向量中心性策略覆盖全部结点，且按绝对值降序。"""
-        from honet.metrics.eigenvector_centrality import eigenvector_centrality
+        from honet.metrics.nodemetrics import eigenvector_centrality
 
         scores = eigenvector_centrality(hg)
         sequence = centrality_attack_sequence(hg, metric="eigenvector")
