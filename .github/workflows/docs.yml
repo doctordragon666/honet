@@ -1,0 +1,81 @@
+# 文档构建与发布：推到 main 即构建 Sphinx 文档并部署到 GitHub Pages。
+#
+# 访问地址：https://doctordragon666.github.io/honet/
+#
+# 首次启用需在仓库 Settings → Pages → Build and deployment 把 Source 设为
+# "GitHub Actions"（只需一次，无法由本文件代替）。
+#
+# 构建用 -W（警告即错误）：文档里的断链、缺符号、坏表格都会让 CI 失败，
+# 避免文档悄悄腐坏。
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "src/**"
+      - "tools/_make_api.py"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/docs.yml"
+  # 允许手动触发，便于不推代码也能重跑一次部署
+  workflow_dispatch:
+  # 定期重建：上游依赖（hypernetx 等）升级可能改变 autodoc 结果，
+  # 每月跑一次能及早发现文档与真实 API 脱节
+  schedule:
+    - cron: "0 4 1 * *"
+
+# 同一分支只保留最新一次部署，避免旧构建覆盖新构建
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: 构建文档
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: 安装依赖（含文档工具链与全部分析功能）
+        # autodoc 要真正 import honet 的分析子包，因此需要 [all]：
+        # 缺 hypernetx / HAT / matplotlib 时 API 页会缺符号。
+        run: |
+          uv sync --group docs --extra all
+
+      - name: 构建 HTML
+        run: |
+          uv run --group docs sphinx-build -b html docs docs/_build/html -W --keep-going
+
+      - name: 关闭 Jekyll（避免下划线开头的目录被吞）
+        run: touch docs/_build/html/.nojekyll
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/html
+
+  deploy:
+    name: 部署到 GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署
+        id: deployment
+        uses: actions/deploy-pages@v4
