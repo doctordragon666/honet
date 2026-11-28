@@ -102,7 +102,10 @@ jobs:
           body=$(curl -sS -X POST \
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=pypi" 2>&1) || true
-          token=$(printf '%s' "$body" | sed -n 's/.*"value":"\([^"]*\)".*/\1/p')
+          # JSON 里冒号后可能带空格（"value": "..."），两种写法都要认，
+          # 否则成功响应会被误判成失败。
+          token=$(printf '%s' "$body" \
+            | sed -n 's/.*"value"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 
           if [ -n "$token" ]; then
             echo "::notice::OIDC 换票成功，可以上传 ${VERSION}。"
