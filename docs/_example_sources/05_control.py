@@ -377,6 +377,64 @@ print("\n最难转移:", batch.hardest())
 print("最易转移:", batch.easiest())
 
 # %% [markdown]
+# ## 10. 线性时变系统（LTV）
+#
+# 前面所有例子都假设 `A`、`B` 是常数矩阵（LTI）。但真实系统常常时变：脑刺激
+# 实验中连接强度随疲劳变化、通信网络随负载改变、机械系统刚度随温度漂移。
+#
+# `simulate_system` 的 `A`、`B` 可以传**接收时间返回矩阵**的函数。
+
+# %%
+A_lti = np.diag([-1.0, -2.0])
+B_full = np.eye(2)
+U_zero = np.zeros((50, 2))
+
+r_lti = honet.control.simulate_system(A_lti, B_full, [1.0, 1.0], U_zero, dt=1e-2)
+# 时变：第一个状态的衰减率随时间增大
+r_ltv = honet.control.simulate_system(
+    lambda t: np.diag([-1.0 - 5.0 * t, -2.0]), B_full, [1.0, 1.0], U_zero, dt=1e-2
+)
+
+print(f"LTI 末态: {np.round(r_lti.final_state, 6)}")
+print(f"LTV 末态: {np.round(r_ltv.final_state, 6)}")
+print(f"LTV 第一个状态衰减更快: {abs(r_ltv.final_state[0]) < abs(r_lti.final_state[0])}")
+
+# %% [markdown]
+# ### 时变可控性：Gramian 的秩
+#
+# **常数系统的 Kalman 秩判据对 LTV 不适用**——`[B, AB, A²B, …]` 只在 `A` 为常数时
+# 才有意义。LTV 的可控性由**可控性 Gramian** 的秩决定：
+#
+# $$W_c(t_0, t_f) = \int_{t_0}^{t_f} \Phi(t_f, \tau) B(\tau) B(\tau)^T \Phi(t_f, \tau)^T d\tau$$
+#
+# `W_c` 满秩即系统完全可控。
+
+# %%
+# 常数系统：与 Kalman 判据对照
+B_one = np.array([[1.0], [0.0]])
+r_kal = honet.control.ltv_controllability(A_lti, B_one, t_final=5.0, steps=512)
+print(f"固定单通道 B: Gramian 秩 = {r_kal.rank}，可控 = {r_kal.controllable}")
+print(f"  Kalman 秩 = {honet.control.kalman_rank(A_lti, B_one)}（两者应一致）")
+
+# %%
+# 时变 B：交替驱动两个通道 —— 合起来可达满秩
+def B_switching(t):
+    return np.array([[1.0], [0.0]]) if int(t) % 2 == 0 else np.array([[0.0], [1.0]])
+
+
+r_tv = honet.control.ltv_controllability(A_lti, B_switching, t_final=10.0, steps=1001)
+print(f"时变 B 交替驱动: Gramian 秩 = {r_tv.rank}，可控 = {r_tv.controllable}")
+print("这正是 LTV 相对 LTI 的优势：单个固定通道只能控一个方向，")
+print("但让 B 随时间切换驱动不同通道，整体仍可完全可控。")
+
+# %%
+# Gramian 本身：对称半正定，特征值反映各方向的「可达难易」
+W = honet.control.ltv_gramian(A_lti, B_full, t_final=2.0, steps=256)
+print("Gramian:")
+print(np.round(W, 4))
+print("特征值:", np.round(np.linalg.eigvalsh(W), 4), "（均非负）")
+
+# %% [markdown]
 # ## 小结
 #
 # | 你想做什么 | 用哪个 |
@@ -390,6 +448,8 @@ print("最易转移:", batch.easiest())
 # | 选控制入口 | `average_controllability` / `control_energy_ranking` |
 # | 选牵制单纯形 | `rank_simplices` / `pinning_matrix` |
 # | 系统间转移能量 | `control_energy_matrix(A, B, labels, T)` |
+# | 时变系统仿真 | `simulate_system(A=fn, B=fn, ...)` |
+# | 时变可控性 | `ltv_controllability(A, B, t_final)` |
 #
 # **三条关键提醒**：
 #

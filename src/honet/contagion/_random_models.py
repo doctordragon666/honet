@@ -25,6 +25,7 @@ from honet._deps import require
 from honet._topology import topology
 from honet.contagion._common import choose_initial_infecteds
 from honet.contagion._model import SIS, CompartmentModel, resolve_model
+from honet.contagion._timevarying import beta_from_tau, resolve_at, resolve_tau_at
 
 
 def _resolve(model: Any) -> CompartmentModel:
@@ -119,7 +120,8 @@ def simulate_random_discrete(
     spec = _resolve(model)
     rng = rng if rng is not None else np.random
 
-    beta = float(np.mean(list(tau.values())))
+    # tau / gamma 可以是常数，也可以是「接收当前时间返回取值」的函数。
+    # 旧实现把 beta 与 gamma 都在循环外算一次，因此无法表达时变参数。
     degrees = _degrees(H)
     output_states = spec.output_states()
 
@@ -133,6 +135,10 @@ def simulate_random_discrete(
         t.append(current_time)
         for name in output_states:
             series[name].append(sum(1 for node in nodes if state[node] == name))
+
+        # 每步重新求值：常数参数走快路径（不做额外计算），函数参数按 t 求值
+        beta = beta_from_tau(resolve_tau_at(tau, current_time))
+        gamma_now = float(resolve_at(gamma, current_time))
 
         theta = _theta(nodes, degrees, state)
         new_state = state.copy()
@@ -148,7 +154,7 @@ def simulate_random_discrete(
             # 恢复 / 离开当前仓室
             elif spec.can_recover(current):
                 noise = rng.normal(0, sigma2)
-                recovery_prob = max(0.0, min(1.0, gamma + noise))
+                recovery_prob = max(0.0, min(1.0, gamma_now + noise))
                 if rng.random() < recovery_prob * dt:
                     new_state[node] = spec.on_recovery[current]
 
@@ -197,7 +203,7 @@ def simulate_random_gillespie(
     spec = _resolve(model)
     rng = rng if rng is not None else np.random
 
-    beta = float(np.mean(list(tau.values())))
+    # beta / gamma 在循环内按当前事件时刻求值，以支持时变参数
     degrees = _degrees(H)
     output_states = spec.output_states()
 
@@ -212,6 +218,10 @@ def simulate_random_gillespie(
 
     current_time = tmin
     while current_time < tmax:
+        # 连续时间下事件时刻不固定，每轮按当前时刻重新求值参数
+        beta = beta_from_tau(resolve_tau_at(tau, current_time))
+        gamma_now = float(resolve_at(gamma, current_time))
+
         theta = _theta(nodes, degrees, state)
 
         # 收集两类事件的速率（都带噪声，且与事件总数口径一致）
@@ -225,7 +235,7 @@ def simulate_random_gillespie(
                 susceptible_rates.append((node, rate))
             elif spec.can_recover(current):
                 noise = rng.normal(0, sigma2)
-                recovery_rates.append((node, max(0.0, gamma + noise)))
+                recovery_rates.append((node, max(0.0, gamma_now + noise)))
 
         total_infection_rate = sum(rate for _, rate in susceptible_rates)
         total_recovery_rate = sum(rate for _, rate in recovery_rates)

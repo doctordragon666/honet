@@ -252,6 +252,51 @@ weights = honet.convert.get_hyperedge_weights(H)
 print("超边权重（无权重时默认 1.0）:", weights)
 
 # %% [markdown]
+# ## 9. 跨类型边界：hypernetx → honet.Hypergraph
+#
+# 前面反复提到「两类超图对象不能混用」。`honet.build.*` 产出的是 hypernetx
+# 对象，而 `honet.incidence_matrix` / `degree_sequence` / `clique_projection`
+# 只收 `honet.Hypergraph`。手写转换有两个坑：
+#
+# - **丢边名与权重**：`Hypergraph.__init__` 的 `edges` 参数只接受成员列表；
+# - **重复成员集冲突**：hypernetx 允许 `{"e1": ["a","b"], "e2": ["b","a"]}`，
+#   而 `honet.Hypergraph` 的判重键是「成员集合 + 标签」，标签为空时第二条会报错。
+#
+# `convert_hypernetx_to_honet` 把这些细节收敛到一处。
+
+# %%
+g = honet.convert.convert_hypernetx_to_honet(H)
+print("转换结果类型:", type(g).__name__)
+print("规模:", g.num_nodes, "结点 ×", g.num_edges, "超边")
+print("边名与权重:", [(e.label, e.weight) for e in g.edges])
+
+# 转换后即可直接使用拓扑层 API
+print("度序列:", honet.degree_sequence(g))
+
+# %% [markdown]
+# > **注意「权重」的两个口径**。上面转换出的 `e1` 权重是 1.0，而第 8 节
+# > `get_hyperedge_weights` 给出的是 3.0——两者不是同一个东西：
+# >
+# > | 口径 | 存在哪 | 含义 | 是否迁移 |
+# > | --- | --- | --- | --- |
+# > | **边级权重** | `H.edges.properties["weight"]` | 整条边一个标量，默认 1.0 | 迁移到 `Hyperedge.weight` |
+# > | **关联权重** | 长表 `(edge, node, weight)` | 每个结点在该边里的份量，列和=超边权重 | 不迁移（容器无对应字段） |
+# >
+# > 需要保留关联权重时，直接读 `H.edges.properties` 或调 `get_hyperedge_weights`。
+
+# %%
+# 重复成员集：默认合并为一条（权重相加），不合并则靠不同边名保留
+import hypernetx as hnx
+
+H_dup = hnx.Hypergraph({"e1": ["a", "b"], "e2": ["b", "a"]})
+print("原始边数:", len(list(H_dup.edges)))
+print("合并后边数:", honet.convert.convert_hypernetx_to_honet(H_dup).num_edges)
+print(
+    "不合并边数:",
+    honet.convert.convert_hypernetx_to_honet(H_dup, merge_duplicates=False).num_edges,
+)
+
+# %% [markdown]
 # ## 小结
 #
 # | 需求 | 用哪个 |
@@ -268,6 +313,7 @@ print("超边权重（无权重时默认 1.0）:", weights)
 #
 # 1. **类型边界**：`honet.build.*` 返回 hypernetx 对象，而
 #    `honet.incidence_matrix` / `degree_sequence` / `clique_projection`
-#    只收 `honet.Hypergraph`。跨边界要手动重建（见第 3 节的 `hnx_to_honet`）。
+#    只收 `honet.Hypergraph`。跨边界用 `convert_hypernetx_to_honet`（见第 9 节），
+#    不要手写转换——手写会丢边名、丢权重，且遇到重复成员集会直接报错。
 # 2. `m` 是**超边数**不是结点数；`n` 是结点池，未被抽中就不出现。
 # 3. 所有生成器都接受 `seed`，做实验必须固定，否则结果不可复现。

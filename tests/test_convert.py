@@ -17,6 +17,7 @@ import pytest
 
 from honet.convert import (
     convert_hypergraphx_to_hypernetx,
+    convert_hypernetx_to_honet,
     convert_hypernetx_to_hypergraphx,
     convert_hypernetx_to_nxgraph,
     convert_hypernetx_to_xgi,
@@ -254,3 +255,105 @@ class TestHypernetxToHatDirected:
         H = hnx.Hypergraph({"e1": ["a", "b"], "e2": ["b", "a"]})
         HG = hypernetx_to_hat_directed(H)
         assert HG.nedges == 2
+
+
+class TestHypernetxToHonet:
+    """hypernetx.Hypergraph -> honet.Hypergraph 的结构、标签、权重与去重。"""
+
+    def test_structure_preserved(self, H: hnx.Hypergraph) -> None:
+        """结点数、边数、高阶度与源超图一致。"""
+        from honet import Hypergraph
+
+        g = convert_hypernetx_to_honet(H)
+        assert isinstance(g, Hypergraph)
+        assert g.num_nodes == len(list(H.nodes))
+        assert g.num_edges == len(list(H.edges))
+        # 高阶度逐个核对：结点的度 = 包含它的超边条数
+        incidence = H.edges.incidence_dict
+        for node in H.nodes:
+            expected = sum(1 for members in incidence.values() if node in members)
+            assert g.degree(node) == expected
+
+    def test_labels_preserved(self, H: hnx.Hypergraph) -> None:
+        """边名迁移为 label。"""
+        g = convert_hypernetx_to_honet(H)
+        assert sorted(e.label for e in g.edges) == sorted(str(e) for e in H.edges)
+
+    def test_labels_dropped_when_disabled(self, H: hnx.Hypergraph) -> None:
+        """keep_labels=False 时 label 全为 None。"""
+        g = convert_hypernetx_to_honet(H, keep_labels=False)
+        assert all(e.label is None for e in g.edges)
+
+    def test_weights_preserved(self) -> None:
+        """边权重迁移；hypernetx 2.4.3 的权重存在 edges.properties 里。"""
+        H = hnx.Hypergraph({"e1": ["a", "b"], "e2": ["b", "c"]})
+        H.edges["e1"].weight = 5.0
+        H.edges["e2"].weight = 2.5
+
+        g = convert_hypernetx_to_honet(H)
+        weights = {e.label: e.weight for e in g.edges}
+        assert weights == {"e1": 5.0, "e2": 2.5}
+
+    def test_weights_dropped_when_disabled(self) -> None:
+        """keep_weights=False 时全部回落到默认 1.0。"""
+        H = hnx.Hypergraph({"e1": ["a", "b"]})
+        H.edges["e1"].weight = 9.0
+
+        g = convert_hypernetx_to_honet(H, keep_weights=False)
+        assert g.edges[0].weight == 1.0
+
+    def test_duplicate_member_sets_merged_by_default(self) -> None:
+        """成员集相同的重复边默认合并，权重累加。"""
+        H = hnx.Hypergraph({"e1": ["a", "b"], "e2": ["b", "a"]})
+        H.edges["e1"].weight = 2.0
+        H.edges["e2"].weight = 3.0
+
+        g = convert_hypernetx_to_honet(H)
+        assert g.num_edges == 1
+        assert abs(g.edges[0].weight - 5.0) < 1e-12
+
+    def test_duplicate_member_sets_kept_when_disabled(self) -> None:
+        """merge_duplicates=False 时保留为两条边（靠不同 label 区分）。"""
+        H = hnx.Hypergraph({"e1": ["a", "b"], "e2": ["b", "a"]})
+
+        g = convert_hypernetx_to_honet(H, merge_duplicates=False)
+        assert g.num_edges == 2
+        assert sorted(e.label for e in g.edges) == ["e1", "e2"]
+
+    def test_duplicate_without_labels_raises(self) -> None:
+        """不合并且不给 label 时，数据无法无损表达，应抛 ValueError。"""
+        H = hnx.Hypergraph({"e1": ["a", "b"], "e2": ["b", "a"]})
+
+        with pytest.raises(ValueError, match="重复的超边"):
+            convert_hypernetx_to_honet(H, keep_labels=False, merge_duplicates=False)
+
+    def test_rejects_honet_input(self) -> None:
+        """传入 honet.Hypergraph 应给出明确提示，而不是后续属性错误。"""
+        from honet import Hypergraph
+
+        with pytest.raises(TypeError, match="无需转换"):
+            convert_hypernetx_to_honet(Hypergraph())
+
+    def test_rejects_non_hypergraph(self) -> None:
+        """传入无关对象应抛 TypeError。"""
+        with pytest.raises(TypeError, match="需要 hypernetx 超图"):
+            convert_hypernetx_to_honet(object())
+
+    def test_result_usable_by_topology_api(self, H: hnx.Hypergraph) -> None:
+        """转换结果能直接喂给 incidence_matrix / degree_sequence。"""
+        from honet import degree_sequence, incidence_matrix
+
+        g = convert_hypernetx_to_honet(H)
+        matrix = incidence_matrix(g)
+        assert len(matrix) == g.num_nodes
+        assert len(matrix[0]) == g.num_edges
+
+        degrees = degree_sequence(g)
+        assert len(degrees) == g.num_nodes
+        assert sum(degrees) == sum(e.size for e in g.edges)
+
+    def test_empty_hypergraph(self) -> None:
+        """空超图应返回空容器，而不是报错。"""
+        g = convert_hypernetx_to_honet(hnx.Hypergraph())
+        assert g.num_nodes == 0
+        assert g.num_edges == 0

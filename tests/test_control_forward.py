@@ -16,6 +16,9 @@ import pytest
 from honet.control import (
     control_energy_matrix,
     expand_states,
+    kalman_rank,
+    ltv_controllability,
+    ltv_gramian,
     minimum_energy_control,
     simulate_impulse,
     simulate_system,
@@ -246,3 +249,110 @@ class TestControlEnergyMatrix:
         """B 维度不符时报错。"""
         with pytest.raises(ValueError, match="B 的行数"):
             control_energy_matrix(np.eye(3), np.eye(4), ["A", "B", "C"], 1.0)
+
+
+class TestTimeVaryingSimulation:
+    """线性时变（LTV）系统的前向仿真。"""
+
+    def test_time_varying_a_changes_trajectory(self):
+        """A 随时间变化时轨迹应与常数 A 不同，且衰减更快。"""
+        a_const = np.diag([-1.0, -2.0])
+        b = np.eye(2)
+        u = np.zeros((20, 2))
+
+        const = simulate_system(a_const, b, [1.0, 1.0], u, dt=1e-2)
+        varying = simulate_system(lambda t: np.diag([-1.0 - t, -2.0]), b, [1.0, 1.0], u, dt=1e-2)
+
+        assert not np.allclose(const.states, varying.states)
+        assert abs(varying.final_state[0]) < abs(const.final_state[0])
+
+    def test_time_varying_b(self):
+        """B 可以是时间函数；返回常数矩阵时应与原结果一致。"""
+        a = np.diag([-1.0, -2.0])
+        b = np.eye(2)
+        u = np.ones((10, 2))
+
+        const = simulate_system(a, b, [0.0, 0.0], u, dt=1e-2)
+        varying = simulate_system(a, lambda t: np.eye(2), [0.0, 0.0], u, dt=1e-2)
+
+        assert np.allclose(const.states, varying.states)
+
+    def test_time_varying_discrete(self):
+        """离散时间同样支持时变 A。"""
+        u = np.zeros((10, 1))
+        # 常数：每步乘 -0.5；时变：乘数随步数递减到 0（衰减更快）
+        a_const = np.array([[-0.5]])
+        result = simulate_system(
+            lambda t: np.array([[-0.5 / (1.0 + t)]]),
+            np.eye(1),
+            [1.0],
+            u,
+            dt=1.0,
+            system="discrete",
+        )
+        const = simulate_system(a_const, np.eye(1), [1.0], u, dt=1.0, system="discrete")
+
+        assert not np.allclose(result.states, const.states)
+        # 乘数逐步趋零，末态绝对值应远小于常数情形
+        assert abs(result.final_state[0]) < abs(const.final_state[0])
+
+    def test_time_varying_shape_mismatch_raises(self):
+        """时变参数在某个时刻形状与 t=0 不符时应报错。"""
+        u = np.zeros((5, 1))
+
+        # t=0 时是 1x1，t>0 时变成 2x2，维度在运行中途变化
+        def a(t):
+            return np.eye(1) if t == 0 else np.eye(2)
+
+        with pytest.raises(ValueError, match="形状应为"):
+            simulate_system(a, np.eye(1), [1.0], u, dt=1e-2)
+
+
+class TestLTVControllability:
+    """LTV 可控性判定。"""
+
+    @pytest.mark.parametrize(
+        ("a", "b", "expected_rank"),
+        [
+            (np.diag([-1.0, -2.0]), np.eye(2), 2),
+            (np.diag([-1.0, -2.0]), np.array([[1.0], [0.0]]), 1),
+            (np.array([[-1.0, 1.0], [0.0, -2.0]]), np.array([[0.0], [1.0]]), 2),
+            (np.diag([-1.0, -2.0, -3.0]), np.array([[1.0], [0.0], [0.0]]), 1),
+        ],
+    )
+    def test_agrees_with_kalman_rank(self, a, b, expected_rank):
+        """常数系统下，LTV Gramian 的秩必须与 Kalman 秩判据一致。"""
+        result = ltv_controllability(a, b, t_final=5.0, steps=512)
+        assert result.rank == expected_rank
+        assert result.rank == kalman_rank(a, b)
+
+    def test_time_varying_b_beats_fixed_b(self):
+        """时变 B 交替驱动两个通道时可达满秩，而固定单通道只有秩 1。"""
+        a = np.diag([-1.0, -2.0])
+        b_fixed = np.array([[1.0], [0.0]])
+
+        def b_varying(t):
+            return np.array([[1.0], [0.0]]) if int(t) % 2 == 0 else np.array([[0.0], [1.0]])
+
+        assert ltv_controllability(a, b_fixed, t_final=10.0, steps=1001).rank == 1
+        assert ltv_controllability(a, b_varying, t_final=10.0, steps=1001).rank == 2
+
+    def test_gramian_symmetric_psd(self):
+        """Gramian 必须对称半正定。"""
+        w = ltv_gramian(np.diag([-1.0, -2.0]), np.eye(2), t_final=2.0, steps=256)
+
+        assert np.allclose(w, w.T)
+        assert np.all(np.linalg.eigvalsh(w) > -1e-12)
+
+    def test_condition_number_infinite_when_rank_deficient(self):
+        """秩亏时条件数为 inf。"""
+        result = ltv_controllability(
+            np.diag([-1.0, -2.0]), np.array([[1.0], [0.0]]), t_final=5.0, steps=256
+        )
+        assert result.condition_number == float("inf")
+        assert not result.controllable
+
+    def test_invalid_steps(self):
+        """steps < 2 应报错。"""
+        with pytest.raises(ValueError, match="steps 必须 >= 2"):
+            ltv_gramian(np.eye(2), np.eye(2), steps=1)

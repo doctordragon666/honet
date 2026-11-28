@@ -113,11 +113,42 @@ EoN（Epidemics on Networks）是成对网络上的经典实现，公开 API 有
 1. **Gillespie 方法只支持 SIS / SIR**。hypernetx 只内置这两个的连续时间实现；
    其它模型请用 `Discrete` 或 `RandomGillespie`，传错会得到明确的 `ValueError`
    而不是静默错误结果。
-2. **仓室转移图是静态的**。不支持随时间变化的参数（如季节性传染率）；需要时
-   请多次调用并自行拼接。
+2. **确定性模型仍是静态参数**。`RandomDiscrete` / `RandomGillespie` 的 `tau` 与
+   `gamma` 支持传时间函数（见下方「时变参数」），但 `hon_sis` / `hon_sir` 等
+   确定性（平均场）实现仍只接受常数参数；需要时变请用随机模型，或按时间段
+   分段调用。
 3. **`E` 仓室当前按「可被感染」处理**。SIER 里 S→E、E→I 都走感染力判定，
    这与部分文献把潜伏期设为固定时长的做法不同；如需固定时长，应扩展规格增加
    「停留时长」字段。
 4. **`initial_recovereds` 在 SIS 下的语义特殊**：它表示「受控结点」而非初始
    恢复者（SIS 没有 R 仓室）。这是为兼容旧实现而保留的行为，已在
    `_discrete.py` 的模块 docstring 中注明。
+
+## 7. 时变参数
+
+`random_discrete_sis` / `random_discrete_sir` / `random_gillespie_sis` /
+`random_gillespie_sir` 的 `tau` 与 `gamma` 除了常数，还可以传**接收时间返回取值**
+的函数，模拟过程每步用当前时刻求值：
+
+```python
+from honet import random_discrete_sis
+
+# 季节性传播：感染力随时间正弦起伏
+def seasonal(t):
+    return {2: 0.4 * (1 + 0.8 * math.sin(2 * math.pi * t / 30))}
+
+# 政策干预：t=20 之后恢复率翻倍
+def policy(t):
+    return 0.1 if t < 20 else 0.25
+
+t, S, I = random_discrete_sis(H, seasonal, policy, rho=0.1, tmax=120, seed=0)
+```
+
+语义要点：
+
+- **离散时间**（`random_discrete_*`）每步在 `t = tmin, tmin+dt, …` 处求值，
+  `tmax=10, dt=1` 共求值 11 次；
+- **连续时间**（`random_gillespie_*`）事件时刻不固定，每轮事件按当前时刻求值；
+- 传常数时走快路径，不做任何额外求值，结果与旧版逐位一致；
+- `tau` 也可以直接传数值，等价于 `{2: 该值}`（只有成对交互）。
+- 确定性模型（`hon_sis` / `hon_sir`）仍只接受常数参数。

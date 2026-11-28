@@ -21,6 +21,9 @@ _EXPORTS = {
     "convert_hypergraphx_to_hypernetx": (
         "honet.convert.convert_hypergraphx_to_hypernetx:convert_hypergraphx_to_hypernetx"
     ),
+    "convert_hypernetx_to_honet": (
+        "honet.convert.convert_hypernetx_to_honet:convert_hypernetx_to_honet"
+    ),
     "convert_hypernetx_to_hypergraphx": (
         "honet.convert.convert_hypernetx_to_hypergraphx:convert_hypernetx_to_hypergraphx"
     ),

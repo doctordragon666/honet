@@ -387,9 +387,12 @@ adjusted, rejected = fdr_p_values(p_values, alpha=0.05)   # BH 步进法
    `algebraic_connectivity` 检查重数。`test_degenerate_spectrum_breaks_first_order`
    把这个边界固化为反例测试。
 
-2. **动力学层是线性时不变的**。`𝒜`、`ℬ` 不随时间变化，不支持时变参数或
-   非线性结点动力学（如 Lorenz）。周进论文的仿真用 Lorenz，属于非线性
-   同步问题，与本框架的线性可控性分析是两套数学工具。
+2. **动力学层默认线性时不变（LTI）**。`𝒜`、`ℬ` 为常数时不支持非线性结点
+   动力学（如 Lorenz）——周进论文的仿真用 Lorenz，属于非线性同步问题，
+   与本框架的线性可控性分析是两套数学工具。
+   **线性时变（LTV）已支持**：`simulate_system` / `simulate_impulse` 的 `A`、`B`
+   可传时间函数，另有 `ltv_gramian` / `ltv_controllability` 做时变可控性判定
+   （见下方「时变系统」）。
 
 3. **拓扑层与动力学层的结点下标口径不同**。拓扑层的驱动节点是
    `0..nnodes-1` 的整数（HAT 内部编号），动力学层是 `L` 的行序。两者都从 0
@@ -413,3 +416,69 @@ adjusted, rejected = fdr_p_values(p_values, alpha=0.05)   # BH 步进法
    时协态方程与状态解耦，理论上 `E12` 会变奇异；实测本实现对给定算例仍精确
    （`E12` 未真正奇异）。若遇到 `E12` 奇异，会抛明确的 `ValueError` 提示增大
    `T` 或检查 `B`，而不是静默返回错误结果。
+
+## 时变系统（LTV）
+
+控制框架默认是线性时不变（LTI）的：`𝒜`、`ℬ` 为常数矩阵。但真实系统常常时变——
+脑刺激实验中连接强度随疲劳变化、通信网络随负载改变、机械系统刚度随温度漂移。
+
+### 前向仿真
+
+`simulate_system` / `simulate_impulse` 的 `A`、`B` 可以传**接收时间返回矩阵**的函数：
+
+```python
+import numpy as np
+from honet.control import simulate_system
+
+# 耦合强度随时间增强
+A = lambda t: np.array([[-1.0, 0.5 + 0.1 * t], [0.0, -2.0]])
+B = np.eye(2)
+result = simulate_system(A, B, [1.0, 1.0], np.zeros((100, 2)), dt=1e-2)
+```
+
+每段用该段起点时刻的 `A(t)` / `B(t)` 做**冻结系数**近似：`dt` 足够小时误差为
+`O(dt²)`，与零阶保持的输入假设同阶。这是 LTV 数值仿真的标准做法，也是 `dt`
+需要取小的原因。传常数矩阵时走原路径，不做任何额外求值。
+
+### 可控性判定
+
+**常数系统的 Kalman 秩判据对 LTV 不适用**：`[B, AB, A²B, …]` 只在 `A` 为常数时
+才有意义。LTV 系统的可控性由**可控性 Gramian** 的秩决定：
+
+```
+W_c(t0, tf) = ∫ Φ(tf, τ) B(τ) B(τ)ᵀ Φ(tf, τ)ᵀ dτ
+```
+
+`W_c` 满秩即系统在 `[t0, tf]` 上完全可控。
+
+```python
+from honet.control import ltv_controllability
+
+result = ltv_controllability(A, B, t0=0.0, t_final=5.0, steps=512)
+result.controllable      # 是否完全可控
+result.rank              # Gramian 的数值秩
+result.condition_number  # 最大/最小奇异值之比；秩亏时为 inf
+```
+
+`ltv_gramian` 单独返回 Gramian，`ltv_controllability` 在其上做秩判定并返回
+`LTVControllabilityResult`。Gramian 用中点法数值积分，状态转移矩阵按时间网格
+递推 `Φ(t_{k+1}, t0) = e^{A(t_k)Δt} Φ(t_k, t0)`，与仿真的冻结系数口径一致。
+
+**LTV 相对 LTI 的关键优势**：单个固定输入通道只能控制一个方向，但若 `B` 随时间
+切换驱动不同通道，Gramian 仍可满秩。例如
+
+```python
+B_tv = lambda t: (np.array([[1.0], [0.0]]) if int(t) % 2 == 0
+                  else np.array([[0.0], [1.0]]))
+ltv_controllability(np.diag([-1.0, -2.0]), B_tv, t_final=10.0, steps=1001).rank  # 2
+```
+
+而固定 `B = [[1],[0]]` 的秩恒为 1。这一差异由测试固定。
+
+### 边界
+
+- 常数系统的 Kalman 秩判据与 LTV Gramian 的秩在 4 组用例上一致（测试保证），
+  因此本模块也可用于常数系统的交叉验证。
+- 时变参数在运行中途改变形状会抛 `ValueError`（报错含具体时刻与期望形状）。
+- 反解类接口（`minimum_energy_control` / `optimal_control`）仍按 LTI 推导，
+  不接受时变 `A` / `B`；LTV 的最优控制需要求解时变 Riccati 方程，尚未实现。

@@ -32,6 +32,27 @@
 
 ### Added
 
+- **`convert` 新增 `convert_hypernetx_to_honet`：hypernetx 超图 → `honet.Hypergraph`**
+  - 此前两个「同名但不同物」的超图类型之间没有官方通道，使用者只能手写
+    `honet.Hypergraph(edges=[sorted(H.edges[e]) for e in H.edges])`，而这个朴素写法
+    会丢边名、丢权重，且遇到 hypernetx 允许的重复成员集（`{"e1": ["a","b"], "e2": ["b","a"]}`）
+    直接抛「重复的超边」。
+  - 新函数迁移结构、边名（`keep_labels`）与权重（`keep_weights`，从
+    `H.edges.properties` 的 `weight` 列读取——hypernetx 2.4.3 已移除 `H.edges.weights`），
+    并按 `merge_duplicates` 决定把重复成员集合并为一条（权重相加）还是保留为多条。
+  - 传入 `honet.Hypergraph` 时给出「无需转换」的明确提示，而不是后续属性错误。
+- **`contagion` 支持时变参数**：`random_discrete_sis` / `random_discrete_sir` /
+  `random_gillespie_sis` / `random_gillespie_sir` 的 `tau` 与 `gamma` 现在可以传
+  `Callable[[float], ...]`，模拟每步用当前时间求值，从而表达季节性传播、
+  政策在某日调整、宣传活动效果衰减等场景。传常数时行为与旧版完全一致
+  （常数走快路径，不做额外求值）。
+- **`control` 支持线性时变系统（LTV）**
+  - `simulate_system` / `simulate_impulse` 的 `A`、`B` 可以是 `Callable[[float], ndarray]`，
+    每步用当前时刻求值（冻结系数近似，误差 `O(dt²)`，与零阶保持的输入假设同阶）。
+  - 新增 `ltv_gramian`（数值估计可控性 Gramian）与 `ltv_controllability`
+    （返回 `LTVControllabilityResult`：Gramian、秩、奇异值、是否可控、条件数）。
+    LTV 系统的可控性由 Gramian 的秩决定，常数系统的 Kalman 秩判据对其不适用；
+    测试保证两者在常数情形下结论一致。
 - **重写 `examples/`，按用途分为两部分**
   - 第一部分：7 个 API 示例 notebook（`01_hypergraph_basics` / `02_metrics` /
     `03_generators_convert` / `04_contagion` / `05_control` / `06_community_attack` /

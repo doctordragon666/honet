@@ -291,11 +291,71 @@ plt.tight_layout()
 plt.show()
 
 # %% [markdown]
+# ## 9. 时变参数：感染力随时间变化
+#
+# 真实传播很少是参数恒定的：流感有季节性、防疫政策在特定日期调整、宣传活动
+# 的效果随热度衰减。`tau` 与 `gamma` 除了常数，还可以传**接收时间返回取值**的
+# 函数，模拟每步用当前时刻求值。
+#
+# 下面模拟「第 20 天起实施干预」：感染力骤降、恢复率上升。
+
+# %%
+import math
+
+T_MAX = 80
+
+
+def tau_seasonal(t):
+    """感染力：前 20 天正常（带轻微周期起伏），之后降到 1/5。"""
+    base = {2: 0.6, 3: 0.8}
+    factor = 1.0 if t < 20 else 0.2
+    # 周期性起伏，模拟「一周内的接触模式变化」
+    ripple = 1.0 + 0.15 * math.sin(2 * math.pi * t / 7.0)
+    return {size: rate * factor * ripple for size, rate in base.items()}
+
+
+def gamma_policy(t):
+    """恢复率：前 20 天 0.1，之后升到 0.4（更快康复）。"""
+    return 0.1 if t < 20 else 0.4
+
+
+t_tv, S_tv, I_tv = honet.contagion.random_discrete_sis(
+    H, tau_seasonal, gamma_policy, rho=0.1, tmax=T_MAX, dt=1.0, seed=7
+)
+t_const, S_const, I_const = honet.contagion.random_discrete_sis(
+    H, {2: 0.6, 3: 0.8}, 0.1, rho=0.1, tmax=T_MAX, dt=1.0, seed=7
+)
+
+print(f"常数参数 末态 I: {I_const[-1]}")
+print(f"时变参数 末态 I: {I_tv[-1]}")
+print(f"时变参数峰值 I: {max(I_tv)}  vs  常数参数峰值 I: {max(I_const)}")
+
+# %%
+plt.figure(figsize=(9, 4))
+plt.plot(t_const, I_const, label="常数参数", linewidth=2)
+plt.plot(t_tv, I_tv, label="第 20 天起干预（时变）", linewidth=2)
+plt.axvline(20, color="gray", linestyle="--", alpha=0.7, label="干预开始")
+plt.xlabel("时间")
+plt.ylabel("感染者数")
+plt.title("时变参数：干预后疫情迅速回落")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# %% [markdown]
+# **为什么用函数而不是分段调用**：分段调用需要把模拟拆成多段手工拼接，
+# 状态延续容易出错，也表达不了连续变化（如正弦式的季节性）。
+# 传函数则由模型内部在每步求值，状态自然连续。
+#
+# 注意 `tau` 也可以直接传数值，等价于 `{2: 该值}`（只考虑成对交互）。
+
+# %% [markdown]
 # ## 小结
 #
 # | 需求 | 用哪个 |
 # | --- | --- |
 # | **画传播曲线** | `random_discrete_sis(H, tau, gamma, rho, tmax, dt)` |
+# | 时变感染力/恢复率 | `tau`、`gamma` 传 `Callable[[float], ...]` |
 # | 事件级分析 | `simulate(H, gamma, tau, model=...)` |
 # | 换模型 | `model="SIS"` / `"SIR"` / `"SEIR"` / `"SIER"` / `"SIRS"` / `"SI"` |
 # | 查内置模型 | `available_models()` / `get_model(name)` |

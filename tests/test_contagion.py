@@ -437,3 +437,88 @@ assert "hypernetx" in sys.modules
 """
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+# ============================================================================
+# 时变参数（tau / gamma 传 Callable）
+# ============================================================================
+
+
+def test_time_varying_tau_is_evaluated_each_step(H: hnx.Hypergraph) -> None:
+    """tau 传函数时，每步用当前时间求值。"""
+    seen: list[float] = []
+
+    def tau_fn(t: float) -> dict[int, float]:
+        seen.append(t)
+        return {2: 0.4, 3: 0.5}
+
+    random_discrete_sis(H, tau_fn, 0.2, rho=0.3, tmax=8, dt=1.0, seed=1)
+
+    # tmax=8, dt=1 应求值 9 次（含 t=0 与 t=8）
+    assert len(seen) == 9
+    assert seen[0] == 0
+    assert seen[-1] == 8
+
+
+def test_time_varying_tau_changes_dynamics(H: hnx.Hypergraph) -> None:
+    """感染率归零后疫情应熄灭，而常数参数下持续流行。"""
+    _, _, i_constant = random_discrete_sis(
+        H, {2: 0.8, 3: 1.0}, 0.1, rho=0.3, tmax=40, dt=1.0, seed=3
+    )
+    _, _, i_switched = random_discrete_sis(
+        H,
+        lambda t: {2: 0.8, 3: 1.0} if t < 10 else {2: 0.0, 3: 0.0},
+        0.1,
+        rho=0.3,
+        tmax=40,
+        dt=1.0,
+        seed=3,
+    )
+
+    assert i_constant != i_switched
+    assert i_switched[-1] < i_constant[-1]
+
+
+def test_time_varying_gamma_is_supported(H: hnx.Hypergraph) -> None:
+    """gamma 传函数时应被接受，且轨迹与常数不同。"""
+    _, _, i_constant = random_discrete_sis(
+        H, {2: 0.8, 3: 1.0}, 0.05, rho=0.3, tmax=30, dt=1.0, seed=3
+    )
+    _, _, i_rising = random_discrete_sis(
+        H, {2: 0.8, 3: 1.0}, lambda t: 0.05 + 0.02 * t, rho=0.3, tmax=30, dt=1.0, seed=3
+    )
+
+    assert i_constant != i_rising
+
+
+def test_constant_parameters_unchanged_by_timevarying_support(H: hnx.Hypergraph) -> None:
+    """回归：常数参数的结果必须与引入时变支持之前一致（可复现性）。"""
+    first = random_discrete_sis(H, TAU, 0.3, rho=0.25, tmax=20, dt=1.0, seed=42)
+    second = random_discrete_sis(H, TAU, 0.3, rho=0.25, tmax=20, dt=1.0, seed=42)
+    assert first == second
+
+
+def test_scalar_tau_is_accepted(H: hnx.Hypergraph) -> None:
+    """tau 传纯数值时按 {2: 值} 处理。"""
+    result = random_discrete_sis(H, 0.4, 0.3, rho=0.25, tmax=10, dt=1.0, seed=1)
+    assert len(result[0]) == 11
+
+
+def test_invalid_tau_type_raises(H: hnx.Hypergraph) -> None:
+    """tau 解析结果既不是字典也不是数值时应抛 TypeError。"""
+    with pytest.raises(TypeError, match="tau 必须解析为"):
+        random_discrete_sis(H, lambda t: "bad", 0.3, rho=0.25, tmax=5, dt=1.0, seed=1)
+
+
+def test_time_varying_tau_gillespie(H: hnx.Hypergraph) -> None:
+    """Gillespie 版本同样支持时变 tau。"""
+    _, _, i_constant = random_gillespie_sis(H, {2: 0.9, 3: 1.0}, 0.05, rho=0.5, tmax=50, seed=2)
+    _, _, i_switched = random_gillespie_sis(
+        H,
+        lambda t: {2: 0.0, 3: 0.0} if t > 10 else {2: 0.9, 3: 1.0},
+        0.05,
+        rho=0.5,
+        tmax=50,
+        seed=2,
+    )
+    assert len(i_constant) != len(i_switched) or i_constant != i_switched
